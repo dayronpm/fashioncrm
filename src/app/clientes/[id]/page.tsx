@@ -22,14 +22,19 @@ const SERVICIOS: Servicio[] = ["Corte", "Barba", "Cejas", "Combo"];
 export default function ClienteProfile() {
   const params = useParams();
   const router = useRouter();
-  const { getClienteConVisitas, addVisita } = useStore();
+  const { getClienteConVisitas, addVisita, updateCliente } = useStore();
   const id = params.id as string;
 
   const cliente = useMemo(() => getClienteConVisitas(id), [id, getClienteConVisitas]);
 
   const [openVisita, setOpenVisita] = useState(false);
+  const [openEditar, setOpenEditar] = useState(false);
   const [servicio, setServicio] = useState<Servicio>("Corte");
   const [precio, setPrecio] = useState(PRECIOS_SERVICIOS["Corte"].toString());
+  const [editNombre, setEditNombre] = useState("");
+  const [editTelefono, setEditTelefono] = useState("");
+  const [editFechaNac, setEditFechaNac] = useState("");
+  const [editNotas, setEditNotas] = useState("");
 
   if (!cliente) {
     return (
@@ -62,6 +67,25 @@ export default function ClienteProfile() {
     setOpenVisita(false);
   };
 
+  const initEdit = () => {
+    setEditNombre(cliente.nombre);
+    setEditTelefono(cliente.telefono);
+    setEditFechaNac(cliente.fechaNacimiento || "");
+    setEditNotas(cliente.notasPref || "");
+    setOpenEditar(true);
+  };
+
+  const guardarEdicion = () => {
+    if (!editNombre.trim() || !editTelefono.trim()) return;
+    updateCliente(cliente.id, {
+      nombre: editNombre.trim(),
+      telefono: editTelefono.trim(),
+      fechaNacimiento: editFechaNac || null,
+      notasPref: editNotas || null,
+    });
+    setOpenEditar(false);
+  };
+
   return (
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
@@ -92,6 +116,9 @@ export default function ClienteProfile() {
           )}
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={initEdit}>
+            ✏️ Editar
+          </Button>
           <a
             href={`https://wa.me/${cliente.telefono}`}
             target="_blank"
@@ -152,6 +179,61 @@ export default function ClienteProfile() {
           </Dialog>
         </div>
       </div>
+
+      {/* Dialog Editar Cliente */}
+      <Dialog open={openEditar} onOpenChange={setOpenEditar}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-stone-700 block mb-1">
+                Nombre *
+              </label>
+              <Input
+                value={editNombre}
+                onChange={(e) => setEditNombre(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-stone-700 block mb-1">
+                Teléfono *
+              </label>
+              <Input
+                value={editTelefono}
+                onChange={(e) => setEditTelefono(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-stone-700 block mb-1">
+                Fecha de nacimiento
+              </label>
+              <Input
+                type="date"
+                value={editFechaNac}
+                onChange={(e) => setEditFechaNac(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-stone-700 block mb-1">
+                Notas / Preferencias
+              </label>
+              <Input
+                value={editNotas}
+                onChange={(e) => setEditNotas(e.target.value)}
+                placeholder="Ej: Le gusta el degradado alto"
+              />
+            </div>
+            <Button
+              onClick={guardarEdicion}
+              className="bg-violet-600 hover:bg-violet-500 w-full"
+            >
+              Guardar cambios
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Frecuencia */}
       <Card>

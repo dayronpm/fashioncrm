@@ -26,9 +26,9 @@
     --radius: 0.625rem;
   }
   * {
-    @apply border-[var(--border)];
+    @apply border-border;
   }
   body {
-    @apply bg-[var(--background)] text-[var(--foreground)];
+    @apply bg-background text-foreground;
   }
 }
