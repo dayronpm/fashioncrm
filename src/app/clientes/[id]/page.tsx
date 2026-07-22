@@ -27,12 +27,21 @@ export default function ClienteProfile() {
   const [openVisita, setOpenVisita] = useState(false);
   const [openEditar, setOpenEditar] = useState(false);
   const [openEliminarVisita, setOpenEliminarVisita] = useState<string | null>(null);
+  // Editar visita individual
   const [openEditarVisita, setOpenEditarVisita] = useState<string | null>(null);
+  const [editVisitaServicio, setEditVisitaServicio] = useState("");
+  const [editVisitaPrecio, setEditVisitaPrecio] = useState("");
+  // Editar grupo de visitas
+  const [openEditarGrupo, setOpenEditarGrupo] = useState(false);
+  const [editarGrupoId, setEditarGrupoId] = useState<string | null>(null);
+  const [editarGrupoFecha, setEditarGrupoFecha] = useState("");
+  const [editarGrupoServicios, setEditarGrupoServicios] = useState<string[]>([]);
+  const [editarGrupoTipoDesc, setEditarGrupoTipoDesc] = useState<"%" | "$">("%");
+  const [editarGrupoDesc, setEditarGrupoDesc] = useState("");
+  // Registrar visita
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([]);
   const [tipoDescuento, setTipoDescuento] = useState<"%" | "$">("%");
   const [descuento, setDescuento] = useState("");
-  const [editVisitaServicio, setEditVisitaServicio] = useState("");
-  const [editVisitaPrecio, setEditVisitaPrecio] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [editCedula, setEditCedula] = useState("");
   const [editNombre, setEditNombre] = useState("");
@@ -143,8 +152,41 @@ export default function ClienteProfile() {
     }
   };
 
-  // ─── Editar visita ──────────────────────────────────────────────
+  // ─── Editar visita (individual o grupo) ────────────────────────
   const initEditarVisita = (v: typeof visitasOrdenadas[0]) => {
+    if (v.groupId) {
+      // Es parte de un grupo → abrir editor de grupo
+      const grupo = visitasAgrupadas.find((g) => g.grupo === v.groupId);
+      if (grupo) {
+        const nombres = grupo.visitas.map((x) => x.servicio);
+        setEditarGrupoId(v.groupId);
+        setEditarGrupoServicios(nombres);
+        setEditarGrupoFecha(grupo.visitas[0].fecha);
+        // Calcular descuento: comparar precio de lista vs lo pagado
+        const subtotalOriginal = nombres.reduce((sum, n) => {
+          const sv = servicios.find((s) => s.nombre === n);
+          return sum + (sv ? sv.precio : 0);
+        }, 0);
+        const totalActual = grupo.visitas.reduce((sum, x) => sum + x.precio, 0);
+        const diff = subtotalOriginal - totalActual;
+        if (diff > 0 && subtotalOriginal > 0) {
+          const pct = Math.round((diff / subtotalOriginal) * 100);
+          if (Math.abs(pct * subtotalOriginal / 100 - diff) < 0.01) {
+            setEditarGrupoTipoDesc("%");
+            setEditarGrupoDesc(pct.toString());
+          } else {
+            setEditarGrupoTipoDesc("$");
+            setEditarGrupoDesc(diff.toFixed(2));
+          }
+        } else {
+          setEditarGrupoTipoDesc("%");
+          setEditarGrupoDesc("0");
+        }
+        setOpenEditarGrupo(true);
+        return;
+      }
+    }
+    // Individual
     setEditVisitaServicio(v.servicio);
     setEditVisitaPrecio(v.precio.toString());
     setOpenEditarVisita(v.id);
@@ -159,6 +201,55 @@ export default function ClienteProfile() {
     });
     setOpenEditarVisita(null);
     setToast("✅ Visita actualizada");
+  };
+
+  const toggleEditarGrupo = (nombre: string) => {
+    setEditarGrupoServicios((prev) =>
+      prev.includes(nombre)
+        ? prev.filter((n) => n !== nombre)
+        : [...prev, nombre]
+    );
+  };
+
+  const guardarEditarGrupo = () => {
+    if (editarGrupoServicios.length === 0 || !editarGrupoId) return;
+
+    // Calcular total con descuento
+    const svsSel = servicios.filter((s) => editarGrupoServicios.includes(s.nombre));
+    const sub = svsSel.reduce((sum, s) => sum + s.precio, 0);
+    const descVal = editarGrupoTipoDesc === "%"
+      ? sub * (Number(editarGrupoDesc) || 0) / 100
+      : Number(editarGrupoDesc) || 0;
+    const total = Math.max(0, sub - descVal);
+    const factor = sub > 0 ? total / sub : 0;
+
+    // Eliminar visitas viejas del grupo
+    const visitasDelGrupo = cliente.visitas.filter((v) => v.groupId === editarGrupoId);
+    visitasDelGrupo.forEach((v) => deleteVisita(v.id));
+
+    // Crear nuevas visitas
+    const newGroupId = svsSel.length > 1 ? `g_${Date.now()}` : undefined;
+    let sumaAjustada = 0;
+    svsSel.forEach((s, i) => {
+      let precioFinal: number;
+      if (i === svsSel.length - 1) {
+        precioFinal = Math.round((total - sumaAjustada) * 100) / 100;
+      } else {
+        precioFinal = Math.round(s.precio * factor * 100) / 100;
+        sumaAjustada += precioFinal;
+      }
+      addVisita({
+        clienteId: cliente.id,
+        fecha: editarGrupoFecha,
+        servicio: s.nombre,
+        precio: precioFinal,
+        groupId: newGroupId,
+      });
+    });
+
+    setOpenEditarGrupo(false);
+    setEditarGrupoId(null);
+    setToast("✅ Grupo de visitas actualizado");
   };
 
   const initEdit = () => {
@@ -446,7 +537,7 @@ export default function ClienteProfile() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            Historial de cortes ({contarSesiones(cliente.visitas)})
+            Historial de visitas ({contarSesiones(cliente.visitas)})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -508,7 +599,7 @@ export default function ClienteProfile() {
                               <button
                                 onClick={() => initEditarVisita(v)}
                                 className="text-stone-300 hover:text-blue-500 text-xs px-0.5"
-                                title="Editar visita"
+                                title={esGrupo ? "Editar grupo" : "Editar visita"}
                               >
                                 ✏️
                               </button>
@@ -672,6 +763,139 @@ export default function ClienteProfile() {
           </Dialog>
         );
       })()}
+
+      {/* Dialog Editar Grupo de Visitas */}
+      <Dialog open={openEditarGrupo} onOpenChange={(open) => { if (!open) { setOpenEditarGrupo(false); setEditarGrupoId(null); }}}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>✏️ Editar visita grupal</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-xs text-stone-500">
+              Visita del{" "}
+              {new Date(editarGrupoFecha).toLocaleDateString("es", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+            <p className="text-sm text-stone-500">
+              Marca o desmarca los servicios incluidos:
+            </p>
+
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {servicios.map((s) => {
+                const sel = editarGrupoServicios.includes(s.nombre);
+                return (
+                  <label
+                    key={s.nombre}
+                    className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                      sel
+                        ? "border-violet-400 bg-violet-50 ring-1 ring-violet-400"
+                        : "border-stone-200 hover:border-stone-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={sel}
+                        onChange={() => toggleEditarGrupo(s.nombre)}
+                        className="accent-violet-600 w-4 h-4"
+                      />
+                      <span className="text-sm font-medium text-stone-800">{s.nombre}</span>
+                    </div>
+                    <span className="text-sm text-stone-500">${s.precio}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            {editarGrupoServicios.length > 0 && (
+              <>
+                <div className="flex justify-between text-sm text-stone-600 border-t pt-3">
+                  <span>Subtotal</span>
+                  <span className="font-medium">
+                    ${editarGrupoServicios.reduce((sum, n) => {
+                      const sv = servicios.find((s) => s.nombre === n);
+                      return sum + (sv ? sv.precio : 0);
+                    }, 0).toFixed(2)}
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-stone-700 block mb-2">
+                    Descuento
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="flex rounded-lg border overflow-hidden shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setEditarGrupoTipoDesc("%")}
+                        className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                          editarGrupoTipoDesc === "%"
+                            ? "bg-violet-600 text-white"
+                            : "bg-white text-stone-600 hover:bg-stone-50"
+                        }`}
+                      >%</button>
+                      <button
+                        type="button"
+                        onClick={() => setEditarGrupoTipoDesc("$")}
+                        className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                          editarGrupoTipoDesc === "$"
+                            ? "bg-violet-600 text-white"
+                            : "bg-white text-stone-600 hover:bg-stone-50"
+                        }`}
+                      >$</button>
+                    </div>
+                    <Input
+                      type="number"
+                      value={editarGrupoDesc}
+                      onChange={(e) => setEditarGrupoDesc(e.target.value)}
+                      onWheel={(e) => (e.target as HTMLElement).blur()}
+                      min={0}
+                      placeholder={editarGrupoTipoDesc === "%" ? "10" : "2"}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between text-base border-t pt-3">
+                  <span className="font-semibold text-stone-800">Total</span>
+                  <span className="font-bold text-violet-700">
+                    ${(() => {
+                      const sub = editarGrupoServicios.reduce((sum, n) => {
+                        const sv = servicios.find((s) => s.nombre === n);
+                        return sum + (sv ? sv.precio : 0);
+                      }, 0);
+                      const desc = editarGrupoTipoDesc === "%"
+                        ? sub * (Number(editarGrupoDesc) || 0) / 100
+                        : Number(editarGrupoDesc) || 0;
+                      return Math.max(0, sub - desc).toFixed(2);
+                    })()}
+                  </span>
+                </div>
+              </>
+            )}
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => { setOpenEditarGrupo(false); setEditarGrupoId(null); }}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={guardarEditarGrupo}
+                disabled={editarGrupoServicios.length === 0}
+                className="flex-1 bg-violet-600 hover:bg-violet-500 disabled:opacity-50"
+              >
+                Guardar cambios
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Toast de notificación */}
       <Toast message={toast} onClose={closeToast} />
