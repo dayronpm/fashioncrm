@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, contarSesiones } from "@/lib/store";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -178,9 +178,14 @@ export default function ClientesPage() {
                   )}
                 </div>
                 <div className="mt-2 text-xs text-stone-500">
-                  {c.visitas.length === 0 && "Sin visitas"}
-                  {c.visitas.length === 1 && "1 visita"}
-                  {c.visitas.length > 1 && `${c.visitas.length} visitas`}
+                  {(() => {
+                    const sesiones = contarSesiones(c.visitas);
+                    return sesiones === 0
+                      ? "Sin visitas"
+                      : sesiones === 1
+                      ? "1 visita"
+                      : `${sesiones} visitas`;
+                  })()}
                   {c.frecuenciaPromedio && ` · Cada ${c.frecuenciaPromedio} días`}
                 </div>
               </CardContent>

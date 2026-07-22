@@ -27,15 +27,58 @@ const StoreContext = createContext<StoreContextType | null>(null);
 // ─── Lógica de frecuencia y riesgo ────────────────────────────────
 const UMBRAL_RIESGO = 1.5;
 
+/** Convierte visitas individuales en sesiones agrupando por groupId */
+function agruparSesiones(visitas: Visita[]): { fecha: string }[] {
+  const sesiones: { fecha: string }[] = [];
+  const gruposVistos = new Set<string>();
+
+  // Ordenar por fecha descendente para mantener el orden
+  const ordenadas = [...visitas].sort(
+    (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+  );
+
+  for (const v of ordenadas) {
+    if (v.groupId) {
+      if (!gruposVistos.has(v.groupId)) {
+        gruposVistos.add(v.groupId);
+        sesiones.push({ fecha: v.fecha });
+      }
+    } else {
+      sesiones.push({ fecha: v.fecha });
+    }
+  }
+
+  return sesiones;
+}
+
+/** Cuenta cuántas sesiones (visitas agrupadas) hay */
+export function contarSesiones(visitas: Visita[]): number {
+  const gruposVistos = new Set<string>();
+  let count = 0;
+  for (const v of visitas) {
+    if (v.groupId) {
+      if (!gruposVistos.has(v.groupId)) {
+        gruposVistos.add(v.groupId);
+        count++;
+      }
+    } else {
+      count++;
+    }
+  }
+  return count;
+}
+
 function calcularFrecuencia(visitas: Visita[]): {
   frecuenciaPromedio: number | null;
   proximaVisita: string | null;
   enRiesgo: boolean;
   diasDesdeUltimaVisita: number;
 } {
-  if (visitas.length < 2) {
+  const sesiones = agruparSesiones(visitas);
+
+  if (sesiones.length < 2) {
     const hoy = new Date();
-    const ultima = visitas.length === 1 ? new Date(visitas[0].fecha) : null;
+    const ultima = sesiones.length === 1 ? new Date(sesiones[0].fecha) : null;
     const diasDesde = ultima
       ? Math.floor((hoy.getTime() - ultima.getTime()) / (1000 * 60 * 60 * 24))
       : 0;
@@ -47,19 +90,15 @@ function calcularFrecuencia(visitas: Visita[]): {
     };
   }
 
-  const sorted = [...visitas].sort(
-    (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
-  );
-
   let totalDias = 0;
-  for (let i = 1; i < sorted.length; i++) {
+  for (let i = 1; i < sesiones.length; i++) {
     totalDias +=
-      (new Date(sorted[i].fecha).getTime() - new Date(sorted[i - 1].fecha).getTime()) /
+      (new Date(sesiones[i].fecha).getTime() - new Date(sesiones[i - 1].fecha).getTime()) /
       (1000 * 60 * 60 * 24);
   }
-  const frecuencia = Math.round(totalDias / (sorted.length - 1));
+  const frecuencia = Math.round(totalDias / (sesiones.length - 1));
 
-  const ultimaFecha = new Date(sorted[sorted.length - 1].fecha);
+  const ultimaFecha = new Date(sesiones[sesiones.length - 1].fecha);
   const hoy = new Date();
   const diasDesde = Math.floor((hoy.getTime() - ultimaFecha.getTime()) / (1000 * 60 * 60 * 24));
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useStore } from "@/lib/store";
+import { useStore, contarSesiones } from "@/lib/store";
 import { useMemo, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -446,7 +446,7 @@ export default function ClienteProfile() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            Historial de cortes ({cliente.visitas.length})
+            Historial de cortes ({contarSesiones(cliente.visitas)})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -499,7 +499,7 @@ export default function ClienteProfile() {
                           {esGrupo ? (
                             <span className="text-violet-700">${totalGrupo.toFixed(2)}</span>
                           ) : (
-                            <span>$${item.visitas[0].precio.toFixed(2)}</span>
+                            <span>${item.visitas[0].precio.toFixed(2)}</span>
                           )}
                         </td>
                         <td className="py-2 align-top">
