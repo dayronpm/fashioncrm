@@ -1,16 +1,20 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from "react";
-import { Cliente, Visita, ClienteConVisitas } from "./types";
-import { getSeedData } from "./data";
+import { Cliente, Visita, ClienteConVisitas, ServicioItem } from "./types";
+import { getSeedData, SEED_SERVICIOS } from "./data";
 
 // ─── Store simple en memoria ──────────────────────────────────────
 interface StoreContextType {
   clientes: Cliente[];
   visitas: Visita[];
+  servicios: ServicioItem[];
   addCliente: (c: Omit<Cliente, "id">) => void;
   updateCliente: (id: string, data: Partial<Cliente>) => void;
   addVisita: (v: Omit<Visita, "id">) => void;
+  addServicio: (s: ServicioItem) => void;
+  updateServicio: (nombreViejo: string, data: ServicioItem) => void;
+  deleteServicio: (nombre: string) => void;
   getClienteConVisitas: (id: string) => ClienteConVisitas | undefined;
   getClientesConVisitas: () => ClienteConVisitas[];
   resetDatabase: () => void;
@@ -75,6 +79,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<{ clientes: Cliente[]; visitas: Visita[] }>(() =>
     getSeedData()
   );
+  const [servicios, setServicios] = useState<ServicioItem[]>(() => [...SEED_SERVICIOS]);
 
   const addCliente = useCallback((c: Omit<Cliente, "id">) => {
     const id = `c_${Date.now()}`;
@@ -99,8 +104,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const addServicio = useCallback((s: ServicioItem) => {
+    setServicios((prev) => [...prev, s]);
+  }, []);
+
+  const updateServicio = useCallback((nombreViejo: string, s: ServicioItem) => {
+    setServicios((prev) =>
+      prev.map((sv) => (sv.nombre === nombreViejo ? s : sv))
+    );
+  }, []);
+
+  const deleteServicio = useCallback((nombre: string) => {
+    setServicios((prev) => prev.filter((sv) => sv.nombre !== nombre));
+  }, []);
+
   const resetDatabase = useCallback(() => {
     setData(getSeedData());
+    setServicios([...SEED_SERVICIOS]);
   }, []);
 
   const getClienteConVisitas = useCallback(
@@ -126,14 +146,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () => ({
       clientes: data.clientes,
       visitas: data.visitas,
+      servicios,
       addCliente,
       updateCliente,
       addVisita,
+      addServicio,
+      updateServicio,
+      deleteServicio,
       getClienteConVisitas,
       getClientesConVisitas,
       resetDatabase,
     }),
-    [data, addCliente, updateCliente, addVisita, getClienteConVisitas, getClientesConVisitas, resetDatabase]
+    [data, servicios, addCliente, updateCliente, addVisita, addServicio, updateServicio, deleteServicio, getClienteConVisitas, getClientesConVisitas, resetDatabase]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

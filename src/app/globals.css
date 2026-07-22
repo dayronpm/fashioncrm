@@ -32,3 +32,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ─── Responsive para pantallas muy grandes ─────────────────────── */
+@layer utilities {
+  .max-w-page {
+    max-width: 1536px;
+  }
+}
+
+/* Mejor espaciado en la tabla de historial en pantallas grandes */
+@media (min-width: 1280px) {
+  .cliente-profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+}

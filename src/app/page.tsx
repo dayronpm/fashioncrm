@@ -40,7 +40,7 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Clientes en riesgo */}
         <Card>
           <CardHeader>

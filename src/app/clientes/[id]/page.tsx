@@ -2,9 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { PRECIOS_SERVICIOS } from "@/lib/data";
 import { useMemo, useState } from "react";
-import { Servicio } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,20 +15,22 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-const SERVICIOS: Servicio[] = ["Corte", "Barba", "Cejas", "Combo"];
-
 export default function ClienteProfile() {
   const params = useParams();
   const router = useRouter();
-  const { getClienteConVisitas, addVisita, updateCliente } = useStore();
+  const { getClienteConVisitas, addVisita, updateCliente, servicios } = useStore();
   const id = params.id as string;
 
   const cliente = useMemo(() => getClienteConVisitas(id), [id, getClienteConVisitas]);
+  const servicioPorDefecto = servicios.length > 0 ? servicios[0].nombre : "";
 
   const [openVisita, setOpenVisita] = useState(false);
   const [openEditar, setOpenEditar] = useState(false);
-  const [servicio, setServicio] = useState<Servicio>("Corte");
-  const [precio, setPrecio] = useState(PRECIOS_SERVICIOS["Corte"].toString());
+  const [servicio, setServicio] = useState(servicioPorDefecto);
+  const [precio, setPrecio] = useState(
+    servicios.length > 0 ? servicios[0].precio.toString() : "0"
+  );
+  const [editCedula, setEditCedula] = useState("");
   const [editNombre, setEditNombre] = useState("");
   const [editTelefono, setEditTelefono] = useState("");
   const [editFechaNac, setEditFechaNac] = useState("");
@@ -51,9 +51,15 @@ export default function ClienteProfile() {
     (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
   );
 
-  const seleccionarServicio = (s: Servicio) => {
+  const seleccionarServicio = (s: string) => {
     setServicio(s);
-    setPrecio(PRECIOS_SERVICIOS[s].toString());
+    const sv = servicios.find((sv) => sv.nombre === s);
+    setPrecio(sv ? sv.precio.toString() : "0");
+  };
+
+  const getPrecioServicio = (s: string): number => {
+    const sv = servicios.find((sv) => sv.nombre === s);
+    return sv ? sv.precio : 0;
   };
 
   const registrarVisita = () => {
@@ -62,12 +68,13 @@ export default function ClienteProfile() {
       clienteId: cliente.id,
       fecha: hoy,
       servicio,
-      precio: Number(precio) || PRECIOS_SERVICIOS[servicio],
+      precio: Number(precio) || getPrecioServicio(servicio),
     });
     setOpenVisita(false);
   };
 
   const initEdit = () => {
+    setEditCedula(cliente.cedula);
     setEditNombre(cliente.nombre);
     setEditTelefono(cliente.telefono);
     setEditFechaNac(cliente.fechaNacimiento || "");
@@ -78,6 +85,7 @@ export default function ClienteProfile() {
   const guardarEdicion = () => {
     if (!editNombre.trim() || !editTelefono.trim()) return;
     updateCliente(cliente.id, {
+      cedula: editCedula.trim(),
       nombre: editNombre.trim(),
       telefono: editTelefono.trim(),
       fechaNacimiento: editFechaNac || null,
@@ -89,7 +97,7 @@ export default function ClienteProfile() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
         <div>
           <Button
             variant="ghost"
@@ -100,7 +108,8 @@ export default function ClienteProfile() {
             ← Volver
           </Button>
           <h1 className="text-2xl font-bold text-stone-800">{cliente.nombre}</h1>
-          <p className="text-stone-500">{cliente.telefono}</p>
+          <p className="text-sm text-stone-500">{cliente.telefono}</p>
+          <p className="text-xs text-stone-400">🪪 {cliente.cedula}</p>
           {cliente.fechaNacimiento && (
             <p className="text-xs text-stone-400">
               🎂 {new Date(cliente.fechaNacimiento).toLocaleDateString("es", {
@@ -141,19 +150,19 @@ export default function ClienteProfile() {
                   ¿Qué servicio se realizó {cliente.nombre}?
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {SERVICIOS.map((s) => (
+                  {servicios.map((s) => (
                     <Button
-                      key={s}
+                      key={s.nombre}
                       type="button"
-                      variant={servicio === s ? "default" : "outline"}
-                      onClick={() => seleccionarServicio(s)}
+                      variant={servicio === s.nombre ? "default" : "outline"}
+                      onClick={() => seleccionarServicio(s.nombre)}
                       className={
-                        servicio === s
+                        servicio === s.nombre
                           ? "bg-violet-600 hover:bg-violet-500"
                           : ""
                       }
                     >
-                      {s} ${PRECIOS_SERVICIOS[s]}
+                      {s.nombre} ${s.precio}
                     </Button>
                   ))}
                 </div>
@@ -187,6 +196,15 @@ export default function ClienteProfile() {
             <DialogTitle>Editar cliente</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-stone-700 block mb-1">
+                Cédula / Pasaporte *
+              </label>
+              <Input
+                value={editCedula}
+                onChange={(e) => setEditCedula(e.target.value)}
+              />
+            </div>
             <div>
               <label className="text-sm font-medium text-stone-700 block mb-1">
                 Nombre *
@@ -235,7 +253,8 @@ export default function ClienteProfile() {
         </DialogContent>
       </Dialog>
 
-      {/* Frecuencia */}
+      {/* Frecuencia + Historial en grid responsive */}
+      <div className="xl:grid xl:grid-cols-2 xl:gap-6 space-y-6 xl:space-y-0">
       <Card>
         <CardContent className="p-4">
           {cliente.enRiesgo && (
@@ -277,29 +296,40 @@ export default function ClienteProfile() {
           {visitasOrdenadas.length === 0 ? (
             <p className="text-sm text-stone-500">Sin visitas registradas.</p>
           ) : (
-            <div className="space-y-3">
-              {visitasOrdenadas.map((v) => (
-                <div
-                  key={v.id}
-                  className="flex items-center justify-between border-b pb-2 last:border-0"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-stone-500">
-                      {new Date(v.fecha).toLocaleDateString("es", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                    <Badge variant="secondary">{v.servicio}</Badge>
-                  </div>
-                  <span className="font-medium text-stone-700">${v.precio}</span>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-stone-500">
+                    <th className="pb-2 pr-4 font-medium">Fecha</th>
+                    <th className="pb-2 pr-4 font-medium">Servicio</th>
+                    <th className="pb-2 text-right font-medium">Precio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visitasOrdenadas.map((v) => (
+                    <tr key={v.id} className="border-b last:border-0">
+                      <td className="py-2 pr-4 text-stone-600 whitespace-nowrap">
+                        {new Date(v.fecha).toLocaleDateString("es", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="py-2 pr-4">
+                        <Badge variant="secondary">{v.servicio}</Badge>
+                      </td>
+                      <td className="py-2 text-right font-medium text-stone-700 whitespace-nowrap">
+                        ${v.precio}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

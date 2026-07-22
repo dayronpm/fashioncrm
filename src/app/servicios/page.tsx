@@ -1,0 +1,204 @@
+"use client";
+
+import { useState } from "react";
+import { useStore } from "@/lib/store";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+export default function ServiciosPage() {
+  const { servicios, addServicio, updateServicio, deleteServicio } = useStore();
+
+  const [openAgregar, setOpenAgregar] = useState(false);
+  const [openEditar, setOpenEditar] = useState<string | null>(null);
+  const [nuevoNombre, setNuevoNombre] = useState("");
+  const [nuevoPrecio, setNuevoPrecio] = useState("");
+  const [editNombre, setEditNombre] = useState("");
+  const [editPrecio, setEditPrecio] = useState("");
+
+  const handleAgregar = () => {
+    if (!nuevoNombre.trim() || !nuevoPrecio.trim()) return;
+    if (servicios.some((s) => s.nombre === nuevoNombre.trim())) {
+      alert("Ya existe un servicio con ese nombre.");
+      return;
+    }
+    addServicio({
+      nombre: nuevoNombre.trim(),
+      precio: Number(nuevoPrecio) || 0,
+    });
+    setNuevoNombre("");
+    setNuevoPrecio("");
+    setOpenAgregar(false);
+  };
+
+  const initEditar = (nombre: string, precio: number) => {
+    setEditNombre(nombre);
+    setEditPrecio(precio.toString());
+    setOpenEditar(nombre);
+  };
+
+  const handleEditar = () => {
+    if (!editNombre.trim() || !editPrecio.trim()) return;
+    if (openEditar && editNombre.trim() !== openEditar && servicios.some((s) => s.nombre === editNombre.trim())) {
+      alert("Ya existe un servicio con ese nombre.");
+      return;
+    }
+    if (openEditar) {
+      updateServicio(openEditar, {
+        nombre: editNombre.trim(),
+        precio: Number(editPrecio) || 0,
+      });
+    }
+    setOpenEditar(null);
+  };
+
+  const handleEliminar = (nombre: string) => {
+    if (confirm(`¿Eliminar el servicio "${nombre}"?`)) {
+      deleteServicio(nombre);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-stone-800">Servicios</h1>
+          <p className="text-stone-500 mt-1">
+            Gestiona los servicios que ofreces y sus precios.
+          </p>
+        </div>
+        <Dialog open={openAgregar} onOpenChange={setOpenAgregar}>
+          <DialogTrigger className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-md text-sm font-medium">
+            + Nuevo servicio
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Agregar servicio</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-stone-700 block mb-1">
+                  Nombre *
+                </label>
+                <Input
+                  value={nuevoNombre}
+                  onChange={(e) => setNuevoNombre(e.target.value)}
+                  placeholder="Ej: Corte, Barba, etc."
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-stone-700 block mb-1">
+                  Precio ($) *
+                </label>
+                <Input
+                  type="number"
+                  value={nuevoPrecio}
+                  onChange={(e) => setNuevoPrecio(e.target.value)}
+                  min={1}
+                  placeholder="8"
+                  required
+                />
+              </div>
+              <Button
+                onClick={handleAgregar}
+                className="bg-violet-600 hover:bg-violet-500 w-full"
+              >
+                Agregar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {servicios.map((s) => (
+          <Card key={s.nombre}>
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-medium text-stone-800">{s.nombre}</p>
+                  <p className="text-lg font-bold text-violet-700 mt-1">
+                    ${s.precio}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-stone-400 hover:text-blue-600"
+                    onClick={() => initEditar(s.nombre, s.precio)}
+                  >
+                    ✏️
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-stone-400 hover:text-red-600"
+                    onClick={() => handleEliminar(s.nombre)}
+                  >
+                    🗑️
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {servicios.length === 0 && (
+          <p className="text-stone-500 col-span-full text-center py-8">
+            No hay servicios registrados. Agrega tu primer servicio.
+          </p>
+        )}
+      </div>
+
+      {/* Dialog Editar Servicio */}
+      <Dialog
+        open={openEditar !== null}
+        onOpenChange={(open) => {
+          if (!open) setOpenEditar(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar servicio</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-stone-700 block mb-1">
+                Nombre *
+              </label>
+              <Input
+                value={editNombre}
+                onChange={(e) => setEditNombre(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-stone-700 block mb-1">
+                Precio ($) *
+              </label>
+              <Input
+                type="number"
+                value={editPrecio}
+                onChange={(e) => setEditPrecio(e.target.value)}
+                min={1}
+              />
+            </div>
+            <Button
+              onClick={handleEditar}
+              className="bg-violet-600 hover:bg-violet-500 w-full"
+            >
+              Guardar cambios
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

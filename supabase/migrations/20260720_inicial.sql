@@ -4,6 +4,7 @@
 -- Tabla de clientes
 CREATE TABLE IF NOT EXISTS clientes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cedula TEXT NOT NULL UNIQUE,
   nombre TEXT NOT NULL,
   telefono TEXT NOT NULL,
   fecha_nacimiento DATE,
@@ -12,12 +13,20 @@ CREATE TABLE IF NOT EXISTS clientes (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Tabla de servicios
+CREATE TABLE IF NOT EXISTS servicios (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre TEXT NOT NULL UNIQUE,
+  precio NUMERIC(10,2) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Tabla de visitas
 CREATE TABLE IF NOT EXISTS visitas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   cliente_id UUID NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
   fecha DATE NOT NULL DEFAULT CURRENT_DATE,
-  servicio TEXT NOT NULL CHECK (servicio IN ('Corte', 'Barba', 'Cejas', 'Combo')),
+  servicio TEXT NOT NULL,
   precio NUMERIC(10,2) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -25,6 +34,7 @@ CREATE TABLE IF NOT EXISTS visitas (
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_visitas_cliente_id ON visitas(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_visitas_fecha ON visitas(fecha);
+CREATE INDEX IF NOT EXISTS idx_clientes_cedula ON clientes(cedula);
 CREATE INDEX IF NOT EXISTS idx_clientes_telefono ON clientes(telefono);
 CREATE INDEX IF NOT EXISTS idx_clientes_nombre ON clientes(nombre);
 

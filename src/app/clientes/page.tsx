@@ -19,33 +19,43 @@ import {
 } from "@/components/ui/card";
 
 export default function ClientesPage() {
-  const { getClientesConVisitas, addCliente } = useStore();
+  const { getClientesConVisitas, addCliente, clientes } = useStore();
   const [busqueda, setBusqueda] = useState("");
   const [open, setOpen] = useState(false);
+  const [cedula, setCedula] = useState("");
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("+507");
 
-  const clientes = useMemo(() => getClientesConVisitas(), [getClientesConVisitas]);
+  const clientesConVisitas = useMemo(() => getClientesConVisitas(), [getClientesConVisitas]);
 
   const filtrados = useMemo(
     () =>
-      clientes.filter(
+      clientesConVisitas.filter(
         (c) =>
           c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-          c.telefono.includes(busqueda)
+          c.telefono.includes(busqueda) ||
+          c.cedula.toLowerCase().includes(busqueda.toLowerCase())
       ),
-    [clientes, busqueda]
+    [clientesConVisitas, busqueda]
   );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nombre.trim() || !telefono.trim()) return;
+    if (!cedula.trim() || !nombre.trim() || !telefono.trim()) return;
+    // Validar cédula única
+    const existe = clientes.find((c) => c.cedula === cedula.trim());
+    if (existe) {
+      alert("Ya existe un cliente con esa cédula/pasaporte.");
+      return;
+    }
     addCliente({
+      cedula: cedula.trim(),
       nombre: nombre.trim(),
       telefono: telefono.trim(),
       fechaNacimiento: null,
       notasPref: null,
     });
+    setCedula("");
     setNombre("");
     setTelefono("+507");
     setOpen(false);
@@ -64,6 +74,17 @@ export default function ClientesPage() {
               <DialogTitle>Registrar cliente</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-stone-700 block mb-1">
+                  Cédula / Pasaporte *
+                </label>
+                <Input
+                  value={cedula}
+                  onChange={(e) => setCedula(e.target.value)}
+                  placeholder="PE-1234567"
+                  required
+                />
+              </div>
               <div>
                 <label className="text-sm font-medium text-stone-700 block mb-1">
                   Nombre *
@@ -112,6 +133,7 @@ export default function ClientesPage() {
                   <div>
                     <p className="font-medium text-stone-800">{c.nombre}</p>
                     <p className="text-xs text-stone-500">{c.telefono}</p>
+                    <p className="text-xs text-stone-400">ID: {c.cedula}</p>
                   </div>
                   {c.enRiesgo && (
                     <Badge variant="destructive" className="text-[10px]">

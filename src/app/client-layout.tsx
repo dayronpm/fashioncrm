@@ -46,8 +46,8 @@ export function ClientLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <nav className="border-b bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-6">
-          <Link href="/" className="font-bold text-lg text-violet-700">
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-6">
+          <Link href="/" className="font-bold text-lg text-violet-700 shrink-0">
             ✂️ BarberPro
           </Link>
           <Link href="/" className="text-sm text-stone-600 hover:text-stone-900">
@@ -59,11 +59,17 @@ export function ClientLayout({ children }: { children: ReactNode }) {
           >
             Clientes
           </Link>
+          <Link
+            href="/servicios"
+            className="text-sm text-stone-600 hover:text-stone-900"
+          >
+            Servicios
+          </Link>
         </div>
       </nav>
-      <main className="max-w-6xl mx-auto px-4 py-6">{children}</main>
+      <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{children}</main>
       <footer className="border-t bg-white mt-12">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between text-xs text-stone-400">
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between text-xs text-stone-400">
           <span>BarberPro CRM &middot; Demo</span>
           <ResetButton />
         </div>

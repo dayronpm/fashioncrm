@@ -1,15 +1,19 @@
-export type Servicio = "Corte" | "Barba" | "Cejas" | "Combo";
+export interface ServicioItem {
+  nombre: string;
+  precio: number;
+}
 
 export interface Visita {
   id: string;
   clienteId: string;
   fecha: string; // ISO date
-  servicio: Servicio;
+  servicio: string;
   precio: number;
 }
 
 export interface Cliente {
   id: string;
+  cedula: string;
   nombre: string;
   telefono: string;
   fechaNacimiento: string | null; // ISO date or null

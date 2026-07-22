@@ -1,12 +1,14 @@
-import { Cliente, Visita, Servicio, SeedData } from "./types";
+import { Cliente, Visita, ServicioItem, SeedData } from "./types";
 
-// ─── Precios de referencia ────────────────────────────────────────
-export const PRECIOS_SERVICIOS: Record<Servicio, number> = {
-  Corte: 8,
-  Barba: 5,
-  Cejas: 3,
-  Combo: 12,
-};
+// ─── Servicios por defecto ─────────────────────────────────────────
+export const SEED_SERVICIOS: ServicioItem[] = [
+  { nombre: "Corte", precio: 8 },
+  { nombre: "Barba", precio: 5 },
+  { nombre: "Cejas", precio: 3 },
+  { nombre: "Combo", precio: 12 },
+];
+
+export const PRECIO_POR_DEFECTO = 8;
 
 // ─── Helper para fechas ───────────────────────────────────────────
 const daysAgo = (d: number): string => {
@@ -22,6 +24,7 @@ export const seedClientes: Cliente[] = [
   // --- En riesgo (3-4) ---
   {
     id: "c1",
+    cedula: "PE-1234567",
     nombre: "Carlos Mendoza",
     telefono: "+50760001111",
     fechaNacimiento: "1990-03-15",
@@ -29,6 +32,7 @@ export const seedClientes: Cliente[] = [
   },
   {
     id: "c2",
+    cedula: "PE-2345678",
     nombre: "Luis Rivera",
     telefono: "+50760002222",
     fechaNacimiento: "1985-07-22",
@@ -36,6 +40,7 @@ export const seedClientes: Cliente[] = [
   },
   {
     id: "c3",
+    cedula: "PE-3456789",
     nombre: "Pedro Castillo",
     telefono: "+50760003333",
     fechaNacimiento: "1993-11-08",
@@ -43,6 +48,7 @@ export const seedClientes: Cliente[] = [
   },
   {
     id: "c4",
+    cedula: "PE-4567890",
     nombre: "Jorge Herrera",
     telefono: "+50760004444",
     fechaNacimiento: "1988-01-05",
@@ -51,6 +57,7 @@ export const seedClientes: Cliente[] = [
   // --- Cumpleaños esta semana (jul 20-26) ---
   {
     id: "c5",
+    cedula: "PE-5678901",
     nombre: "Miguel Torres",
     telefono: "+50760005555",
     fechaNacimiento: "1995-07-22",
@@ -58,6 +65,7 @@ export const seedClientes: Cliente[] = [
   },
   {
     id: "c6",
+    cedula: "PE-6789012",
     nombre: "Anaís De León",
     telefono: "+50760006666",
     fechaNacimiento: "1998-07-25",
@@ -65,6 +73,7 @@ export const seedClientes: Cliente[] = [
   },
   {
     id: "c7",
+    cedula: "PE-7890123",
     nombre: "Roberto Quintero",
     telefono: "+50760007777",
     fechaNacimiento: "1992-07-21",
@@ -73,6 +82,7 @@ export const seedClientes: Cliente[] = [
   // --- Historial regular (5-6) ---
   {
     id: "c8",
+    cedula: "PE-8901234",
     nombre: "David Samudio",
     telefono: "+50760008888",
     fechaNacimiento: "1991-09-12",
@@ -80,6 +90,7 @@ export const seedClientes: Cliente[] = [
   },
   {
     id: "c9",
+    cedula: "PE-9012345",
     nombre: "José Icaza",
     telefono: "+50760009999",
     fechaNacimiento: "1987-04-18",
@@ -87,6 +98,7 @@ export const seedClientes: Cliente[] = [
   },
   {
     id: "c10",
+    cedula: "PE-0123456",
     nombre: "Santiago Poveda",
     telefono: "+50760001010",
     fechaNacimiento: "1994-06-30",
@@ -94,6 +106,7 @@ export const seedClientes: Cliente[] = [
   },
   {
     id: "c11",
+    cedula: "PP-1234567",
     nombre: "Fernando Arosemena",
     telefono: "+50760001111",
     fechaNacimiento: "1986-12-25",
@@ -101,6 +114,7 @@ export const seedClientes: Cliente[] = [
   },
   {
     id: "c12",
+    cedula: "PP-2345678",
     nombre: "Ricardo De La Espriella",
     telefono: "+50760001212",
     fechaNacimiento: "1996-02-14",
@@ -108,6 +122,7 @@ export const seedClientes: Cliente[] = [
   },
   {
     id: "c13",
+    cedula: "PP-3456789",
     nombre: "Alonso Pérez",
     telefono: "+50760001313",
     fechaNacimiento: "1993-08-08",
@@ -116,6 +131,7 @@ export const seedClientes: Cliente[] = [
   // --- Nuevos (2, poco o nada historial) ---
   {
     id: "c14",
+    cedula: "PP-4567890",
     nombre: "Kevin Morrison",
     telefono: "+50760001414",
     fechaNacimiento: null,
@@ -123,6 +139,7 @@ export const seedClientes: Cliente[] = [
   },
   {
     id: "c15",
+    cedula: "PP-5678901",
     nombre: "Diego Villarreal",
     telefono: "+50760001515",
     fechaNacimiento: "1999-10-10",
@@ -254,14 +271,14 @@ export const seedVisitas: Visita[] = [
 
 function makeVisits(
   clienteId: string,
-  entries: [number, Servicio, number][]
+  entries: [number, string, number][]
 ): Visita[] {
   return entries.map(([d, servicio, precio], i) => ({
     id: `v_${clienteId}_${i}`,
     clienteId,
     fecha: daysAgo(d),
     servicio,
-    precio: precio || randomPrice(PRECIOS_SERVICIOS[servicio]),
+    precio: precio || randomPrice(PRECIO_POR_DEFECTO),
   }));
 }
 
