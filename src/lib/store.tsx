@@ -83,8 +83,8 @@ function calcularFrecuencia(visitas: Visita[]): {
     const diasDesde = ultima
       ? Math.floor((hoy.getTime() - ultima.getTime()) / (1000 * 60 * 60 * 24))
       : 0;
-    // Marcar como en riesgo si tiene 1 sola visita y pasaron más de 60 días
-    const enRiesgoUnico = sesiones.length === 1 && diasDesde > 60;
+    // Marcar como en riesgo si tiene 1 sola visita y pasaron más de 30 días
+    const enRiesgoUnico = sesiones.length === 1 && diasDesde > 30;
     return {
       frecuenciaPromedio: null,
       proximaVisita: null,

@@ -43,6 +43,7 @@ export default function ClienteProfile() {
   const [tipoDescuento, setTipoDescuento] = useState<"%" | "$">("%");
   const [descuento, setDescuento] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [editErrorMsg, setEditErrorMsg] = useState<string | null>(null);
   const [editCedula, setEditCedula] = useState("");
   const [editNombre, setEditNombre] = useState("");
   const [editTelefono, setEditTelefono] = useState("");
@@ -265,6 +266,7 @@ export default function ClienteProfile() {
     setEditTelefono(cliente.telefono);
     setEditFechaNac(cliente.fechaNacimiento || "");
     setEditNotas(cliente.notasPref || "");
+    setEditErrorMsg(null);
     setOpenEditar(true);
   };
 
@@ -275,7 +277,7 @@ export default function ClienteProfile() {
       (c) => c.cedula === editCedula.trim() && c.id !== cliente.id
     );
     if (duplicado) {
-      setToast("⚠️ Esa cédula/pasaporte ya pertenece a otro cliente");
+      setEditErrorMsg("⚠️ Esa cédula/pasaporte ya pertenece a otro cliente");
       return;
     }
     updateCliente(cliente.id, {
@@ -286,6 +288,7 @@ export default function ClienteProfile() {
       notasPref: editNotas || null,
     });
     setOpenEditar(false);
+    setEditErrorMsg(null);
     setToast("✅ Cliente actualizado");
   };
 
@@ -484,6 +487,11 @@ export default function ClienteProfile() {
             <DialogTitle>Editar cliente</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {editErrorMsg && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                {editErrorMsg}
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium text-stone-700 block mb-1">
                 Cédula / Pasaporte *
@@ -504,7 +512,7 @@ export default function ClienteProfile() {
             </div>
             <div>
               <label className="text-sm font-medium text-stone-700 block mb-1">
-                Teléfono <span className="text-stone-400">(opcional)</span>
+                Teléfono
               </label>
               <Input
                 type="tel"
