@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +14,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Toast } from "@/components/Toast";
 
 export default function ClienteProfile() {
   const params = useParams();
   const router = useRouter();
-  const { getClienteConVisitas, addVisita, updateCliente, servicios } = useStore();
+  const { getClienteConVisitas, addVisita, deleteVisita, updateCliente, servicios } = useStore();
   const id = params.id as string;
 
   const cliente = useMemo(() => getClienteConVisitas(id), [id, getClienteConVisitas]);
@@ -26,15 +27,19 @@ export default function ClienteProfile() {
 
   const [openVisita, setOpenVisita] = useState(false);
   const [openEditar, setOpenEditar] = useState(false);
+  const [openEliminarVisita, setOpenEliminarVisita] = useState<string | null>(null);
   const [servicio, setServicio] = useState(servicioPorDefecto);
   const [precio, setPrecio] = useState(
     servicios.length > 0 ? servicios[0].precio.toString() : "0"
   );
+  const [toast, setToast] = useState<string | null>(null);
   const [editCedula, setEditCedula] = useState("");
   const [editNombre, setEditNombre] = useState("");
   const [editTelefono, setEditTelefono] = useState("");
   const [editFechaNac, setEditFechaNac] = useState("");
   const [editNotas, setEditNotas] = useState("");
+
+  const closeToast = useCallback(() => setToast(null), []);
 
   if (!cliente) {
     return (
@@ -63,7 +68,7 @@ export default function ClienteProfile() {
   };
 
   const registrarVisita = () => {
-    const hoy = new Date("2026-07-20").toISOString().split("T")[0];
+    const hoy = new Date().toISOString().split("T")[0];
     addVisita({
       clienteId: cliente.id,
       fecha: hoy,
@@ -71,6 +76,15 @@ export default function ClienteProfile() {
       precio: Number(precio) || getPrecioServicio(servicio),
     });
     setOpenVisita(false);
+    setToast("✅ Visita registrada correctamente");
+  };
+
+  const confirmarEliminarVisita = () => {
+    if (openEliminarVisita) {
+      deleteVisita(openEliminarVisita);
+      setOpenEliminarVisita(null);
+      setToast("🗑️ Visita eliminada");
+    }
   };
 
   const initEdit = () => {
@@ -92,6 +106,7 @@ export default function ClienteProfile() {
       notasPref: editNotas || null,
     });
     setOpenEditar(false);
+    setToast("✅ Cliente actualizado");
   };
 
   return (
@@ -302,12 +317,13 @@ export default function ClienteProfile() {
                   <tr className="border-b text-left text-stone-500">
                     <th className="pb-2 pr-4 font-medium">Fecha</th>
                     <th className="pb-2 pr-4 font-medium">Servicio</th>
-                    <th className="pb-2 text-right font-medium">Precio</th>
+                    <th className="pb-2 pr-4 text-right font-medium">Precio</th>
+                    <th className="pb-2 w-10"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {visitasOrdenadas.map((v) => (
-                    <tr key={v.id} className="border-b last:border-0">
+                    <tr key={v.id} className="border-b last:border-0 group">
                       <td className="py-2 pr-4 text-stone-600 whitespace-nowrap">
                         {new Date(v.fecha).toLocaleDateString("es", {
                           day: "numeric",
@@ -318,8 +334,17 @@ export default function ClienteProfile() {
                       <td className="py-2 pr-4">
                         <Badge variant="secondary">{v.servicio}</Badge>
                       </td>
-                      <td className="py-2 text-right font-medium text-stone-700 whitespace-nowrap">
+                      <td className="py-2 pr-4 text-right font-medium text-stone-700 whitespace-nowrap">
                         ${v.precio}
+                      </td>
+                      <td className="py-2">
+                        <button
+                          onClick={() => setOpenEliminarVisita(v.id)}
+                          className="text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-sm"
+                          title="Eliminar visita"
+                        >
+                          ✕
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -330,6 +355,42 @@ export default function ClienteProfile() {
         </CardContent>
       </Card>
       </div>
+
+      {/* Dialog Confirmar Eliminación de Visita */}
+      <Dialog
+        open={openEliminarVisita !== null}
+        onOpenChange={(open) => { if (!open) setOpenEliminarVisita(null); }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600">🗑️ Eliminar visita</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-stone-700">
+            ¿Estás seguro de que deseas eliminar esta visita?
+          </p>
+          <p className="text-xs text-stone-500">
+            Esta acción no se puede deshacer.
+          </p>
+          <div className="flex gap-3 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setOpenEliminarVisita(null)}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmarEliminarVisita}
+              className="flex-1 bg-red-600 hover:bg-red-500"
+            >
+              Eliminar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Toast de notificación */}
+      <Toast message={toast} onClose={closeToast} />
     </div>
   );
 }

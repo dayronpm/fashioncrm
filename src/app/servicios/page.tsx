@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Toast } from "@/components/Toast";
 
 export default function ServiciosPage() {
   const { servicios, addServicio, updateServicio, deleteServicio } = useStore();
@@ -20,10 +21,13 @@ export default function ServiciosPage() {
   const [openEditar, setOpenEditar] = useState<string | null>(null);
   const [openEliminar, setOpenEliminar] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoPrecio, setNuevoPrecio] = useState("");
   const [editNombre, setEditNombre] = useState("");
   const [editPrecio, setEditPrecio] = useState("");
+
+  const closeToast = useCallback(() => setToast(null), []);
 
   const handleAgregar = () => {
     if (!nuevoNombre.trim() || !nuevoPrecio.trim()) return;
@@ -38,6 +42,7 @@ export default function ServiciosPage() {
     setNuevoNombre("");
     setNuevoPrecio("");
     setOpenAgregar(false);
+    setToast(`✅ Servicio "${nuevoNombre.trim()}" agregado`);
   };
 
   const initEditar = (nombre: string, precio: number) => {
@@ -59,12 +64,14 @@ export default function ServiciosPage() {
       });
     }
     setOpenEditar(null);
+    setToast(`✅ Servicio actualizado`);
   };
 
   const handleEliminar = () => {
     if (openEliminar) {
       deleteServicio(openEliminar);
       setOpenEliminar(null);
+      setToast(`🗑️ Servicio "${openEliminar}" eliminado`);
     }
   };
 
@@ -249,6 +256,9 @@ export default function ServiciosPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Toast de notificación */}
+      <Toast message={toast} onClose={closeToast} />
     </div>
   );
 }

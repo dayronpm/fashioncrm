@@ -10,7 +10,7 @@ export default function Dashboard() {
   const { getClientesConVisitas } = useStore();
   const clientes = useMemo(() => getClientesConVisitas(), [getClientesConVisitas]);
 
-  const hoy = new Date("2026-07-20");
+  const hoy = new Date();
 
   // Cumpleañeros esta semana (próximos 7 días)
   const cumpleanieros = clientes.filter((c) => {

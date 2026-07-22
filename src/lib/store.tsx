@@ -12,6 +12,7 @@ interface StoreContextType {
   addCliente: (c: Omit<Cliente, "id">) => void;
   updateCliente: (id: string, data: Partial<Cliente>) => void;
   addVisita: (v: Omit<Visita, "id">) => void;
+  deleteVisita: (id: string) => void;
   addServicio: (s: ServicioItem) => void;
   updateServicio: (nombreViejo: string, data: ServicioItem) => void;
   deleteServicio: (nombre: string) => void;
@@ -32,7 +33,7 @@ function calcularFrecuencia(visitas: Visita[]): {
   diasDesdeUltimaVisita: number;
 } {
   if (visitas.length < 2) {
-    const hoy = new Date("2026-07-20");
+    const hoy = new Date();
     const ultima = visitas.length === 1 ? new Date(visitas[0].fecha) : null;
     const diasDesde = ultima
       ? Math.floor((hoy.getTime() - ultima.getTime()) / (1000 * 60 * 60 * 24))
@@ -58,7 +59,7 @@ function calcularFrecuencia(visitas: Visita[]): {
   const frecuencia = Math.round(totalDias / (sorted.length - 1));
 
   const ultimaFecha = new Date(sorted[sorted.length - 1].fecha);
-  const hoy = new Date("2026-07-20");
+  const hoy = new Date();
   const diasDesde = Math.floor((hoy.getTime() - ultimaFecha.getTime()) / (1000 * 60 * 60 * 24));
 
   const proxima = new Date(ultimaFecha);
@@ -101,6 +102,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setData((prev) => ({
       ...prev,
       visitas: [...prev.visitas, { ...v, id }],
+    }));
+  }, []);
+
+  const deleteVisita = useCallback((id: string) => {
+    setData((prev) => ({
+      ...prev,
+      visitas: prev.visitas.filter((v) => v.id !== id),
     }));
   }, []);
 
@@ -150,6 +158,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addCliente,
       updateCliente,
       addVisita,
+      deleteVisita,
       addServicio,
       updateServicio,
       deleteServicio,
@@ -157,7 +166,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       getClientesConVisitas,
       resetDatabase,
     }),
-    [data, servicios, addCliente, updateCliente, addVisita, addServicio, updateServicio, deleteServicio, getClienteConVisitas, getClientesConVisitas, resetDatabase]
+    [data, servicios, addCliente, updateCliente, addVisita, deleteVisita, addServicio, updateServicio, deleteServicio, getClienteConVisitas, getClientesConVisitas, resetDatabase]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

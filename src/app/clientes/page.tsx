@@ -19,8 +19,9 @@ import {
 } from "@/components/ui/card";
 
 export default function ClientesPage() {
-  const { getClientesConVisitas, addCliente, clientes } = useStore();
+  const { getClientesConVisitas, addCliente, clientes, servicios } = useStore();
   const [busqueda, setBusqueda] = useState("");
+  const [filtroServicio, setFiltroServicio] = useState("");
   const [open, setOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [cedula, setCedula] = useState("");
@@ -32,13 +33,20 @@ export default function ClientesPage() {
 
   const filtrados = useMemo(
     () =>
-      clientesConVisitas.filter(
-        (c) =>
+      clientesConVisitas.filter((c) => {
+        // Filtro por texto
+        const matchTexto =
+          !busqueda ||
           c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
           c.telefono.includes(busqueda) ||
-          c.cedula.toLowerCase().includes(busqueda.toLowerCase())
-      ),
-    [clientesConVisitas, busqueda]
+          c.cedula.toLowerCase().includes(busqueda.toLowerCase());
+        if (!matchTexto) return false;
+
+        // Filtro por servicio
+        if (!filtroServicio) return true;
+        return c.visitas.some((v) => v.servicio === filtroServicio);
+      }),
+    [clientesConVisitas, busqueda, filtroServicio]
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -127,13 +135,27 @@ export default function ClientesPage() {
         </Dialog>
       </div>
 
-      {/* Buscador */}
-      <Input
-        placeholder="Buscar por nombre o teléfono..."
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        className="max-w-md"
-      />
+      {/* Buscador y filtros */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Input
+          placeholder="Buscar por nombre, teléfono o cédula..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          className="sm:max-w-xs"
+        />
+        <select
+          value={filtroServicio}
+          onChange={(e) => setFiltroServicio(e.target.value)}
+          className="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 sm:w-auto"
+        >
+          <option value="">Todos los servicios</option>
+          {servicios.map((s) => (
+            <option key={s.nombre} value={s.nombre}>
+              {s.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* Lista */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
