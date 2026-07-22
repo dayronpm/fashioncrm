@@ -66,15 +66,17 @@ export default function Dashboard() {
                     {c.frecuenciaPromedio && ` (frecuencia: ${c.frecuenciaPromedio} días)`}
                   </p>
                 </div>
-                <a
-                  href={`https://wa.me/${c.telefono}?text=¡Hola%20${encodeURIComponent(c.nombre)}!%20Hace%20mucho%20que%20no%20vienes%20a%20la%20barbería.%20¡Te%20esperamos!`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button size="sm" variant="outline" className="border-green-400 text-green-700 hover:bg-green-50">
-                    WhatsApp
-                  </Button>
-                </a>
+                {c.telefono && (
+                  <a
+                    href={`https://wa.me/${c.telefono}?text=¡Hola%20${encodeURIComponent(c.nombre)}!%20Hace%20mucho%20que%20no%20vienes%20a%20la%20barbería.%20¡Te%20esperamos!`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button size="sm" variant="outline" className="border-green-400 text-green-700 hover:bg-green-50">
+                      WhatsApp
+                    </Button>
+                  </a>
+                )}
               </div>
             ))}
           </CardContent>
@@ -106,15 +108,17 @@ export default function Dashboard() {
                       {nac.toLocaleDateString("es", { day: "numeric", month: "long" })}
                     </p>
                   </div>
-                  <a
-                    href={`https://wa.me/${c.telefono}?text=¡Feliz%20cumpleaños%20${encodeURIComponent(c.nombre)}!%20Ven%20y%20consiente%20con%20un%20corte%20🎉`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Button size="sm" variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-50">
-                      Felicitar
-                    </Button>
-                  </a>
+                  {c.telefono && (
+                    <a
+                      href={`https://wa.me/${c.telefono}?text=¡Feliz%20cumpleaños%20${encodeURIComponent(c.nombre)}!%20Ven%20y%20consiente%20con%20un%20corte%20🎉`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button size="sm" variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-50">
+                        Felicitar
+                      </Button>
+                    </a>
+                  )}
                 </div>
               );
             })}

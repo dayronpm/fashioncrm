@@ -51,6 +51,19 @@ export default function StatsChart() {
       }));
   }, [visitas]);
 
+  if (data.length === 0) {
+    return (
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-stone-800">Estadísticas</h2>
+        </div>
+        <div className="h-48 flex items-center justify-center rounded-lg border border-dashed border-stone-300">
+          <p className="text-sm text-stone-400">Sin datos de visitas para mostrar.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex items-center gap-2 mb-4">

@@ -268,7 +268,7 @@ export default function ClienteProfile() {
   };
 
   const guardarEdicion = () => {
-    if (!editNombre.trim() || !editTelefono.trim()) return;
+    if (!editNombre.trim()) return;
     updateCliente(cliente.id, {
       cedula: editCedula.trim(),
       nombre: editNombre.trim(),
@@ -314,15 +314,17 @@ export default function ClienteProfile() {
           <Button variant="outline" onClick={initEdit}>
             ✏️ Editar
           </Button>
-          <a
-            href={`https://wa.me/${cliente.telefono}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Button variant="outline" className="border-green-400 text-green-700">
-              WhatsApp
-            </Button>
-          </a>
+          {cliente.telefono && (
+            <a
+              href={`https://wa.me/${cliente.telefono}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline" className="border-green-400 text-green-700">
+                WhatsApp
+              </Button>
+            </a>
+          )}
           <Dialog open={openVisita} onOpenChange={setOpenVisita}>
             <DialogTrigger className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-md text-sm font-medium inline-flex items-center justify-center">
               + Registrar visita
@@ -437,6 +439,7 @@ export default function ClienteProfile() {
                           onChange={(e) => setDescuento(e.target.value)}
                           onWheel={(e) => (e.target as HTMLElement).blur()}
                           min={0}
+                          max={tipoDescuento === "%" ? 100 : subtotal}
                           placeholder={tipoDescuento === "%" ? "10" : "2"}
                           className="flex-1"
                         />
@@ -821,8 +824,13 @@ export default function ClienteProfile() {
                       value={editarGrupoDesc}
                       onChange={(e) => setEditarGrupoDesc(e.target.value)}
                       onWheel={(e) => (e.target as HTMLElement).blur()}
-                      min={0}
-                      placeholder={editarGrupoTipoDesc === "%" ? "10" : "2"}
+                      min={0}                      max={editarGrupoTipoDesc === "%" ? 100 : (() => {
+                        const sub = editarGrupoServicios.reduce((sum, n) => {
+                          const sv = servicios.find((s) => s.nombre === n);
+                          return sum + (sv ? sv.precio : 0);
+                        }, 0);
+                        return sub;
+                      })()}                      placeholder={editarGrupoTipoDesc === "%" ? "10" : "2"}
                       className="flex-1"
                     />
                   </div>
