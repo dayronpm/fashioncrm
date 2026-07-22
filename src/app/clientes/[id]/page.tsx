@@ -436,7 +436,7 @@ export default function ClienteProfile() {
                         <Input
                           type="number"
                           value={descuento}
-                          onChange={(e) => setDescuento(e.target.value)}
+                          onChange={(e) => setDescuento(e.target.value.replace(/-/g, ""))}
                           onWheel={(e) => (e.target as HTMLElement).blur()}
                           min={0}
                           max={tipoDescuento === "%" ? 100 : subtotal}
@@ -822,9 +822,10 @@ export default function ClienteProfile() {
                     <Input
                       type="number"
                       value={editarGrupoDesc}
-                      onChange={(e) => setEditarGrupoDesc(e.target.value)}
+                      onChange={(e) => setEditarGrupoDesc(e.target.value.replace(/-/g, ""))}
                       onWheel={(e) => (e.target as HTMLElement).blur()}
-                      min={0}                      max={editarGrupoTipoDesc === "%" ? 100 : (() => {
+                      min={0}
+                      max={editarGrupoTipoDesc === "%" ? 100 : (() => {
                         const sub = editarGrupoServicios.reduce((sum, n) => {
                           const sv = servicios.find((s) => s.nombre === n);
                           return sum + (sv ? sv.precio : 0);
