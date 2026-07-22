@@ -9,6 +9,7 @@ export interface Visita {
   fecha: string; // ISO date
   servicio: string;
   precio: number;
+  groupId?: string; // agrupa visitas registradas juntas (multi-servicio)
 }
 
 export interface Cliente {

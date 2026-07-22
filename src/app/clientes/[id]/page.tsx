@@ -19,7 +19,7 @@ import { Toast } from "@/components/Toast";
 export default function ClienteProfile() {
   const params = useParams();
   const router = useRouter();
-  const { getClienteConVisitas, addVisita, deleteVisita, updateCliente, servicios } = useStore();
+  const { getClienteConVisitas, addVisita, updateVisita, deleteVisita, updateCliente, servicios } = useStore();
   const id = params.id as string;
 
   const cliente = useMemo(() => getClienteConVisitas(id), [id, getClienteConVisitas]);
@@ -27,9 +27,12 @@ export default function ClienteProfile() {
   const [openVisita, setOpenVisita] = useState(false);
   const [openEditar, setOpenEditar] = useState(false);
   const [openEliminarVisita, setOpenEliminarVisita] = useState<string | null>(null);
+  const [openEditarVisita, setOpenEditarVisita] = useState<string | null>(null);
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([]);
   const [tipoDescuento, setTipoDescuento] = useState<"%" | "$">("%");
   const [descuento, setDescuento] = useState("");
+  const [editVisitaServicio, setEditVisitaServicio] = useState("");
+  const [editVisitaPrecio, setEditVisitaPrecio] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [editCedula, setEditCedula] = useState("");
   const [editNombre, setEditNombre] = useState("");
@@ -38,6 +41,36 @@ export default function ClienteProfile() {
   const [editNotas, setEditNotas] = useState("");
 
   const closeToast = useCallback(() => setToast(null), []);
+
+  // ─── Agrupar visitas por groupId (hooks deben ir antes del early return) ──
+  const visitasOrdenadas = useMemo(
+    () =>
+      cliente
+        ? [...cliente.visitas].sort(
+            (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+          )
+        : [],
+    [cliente]
+  );
+
+  const visitasAgrupadas = useMemo(() => {
+    const resultado: { grupo?: string; visitas: typeof visitasOrdenadas }[] = [];
+    const procesados = new Set<string>();
+
+    visitasOrdenadas.forEach((v) => {
+      if (v.groupId) {
+        if (!procesados.has(v.groupId)) {
+          procesados.add(v.groupId);
+          const delGrupo = visitasOrdenadas.filter((x) => x.groupId === v.groupId);
+          resultado.push({ grupo: v.groupId, visitas: delGrupo });
+        }
+      } else {
+        resultado.push({ visitas: [v] });
+      }
+    });
+
+    return resultado;
+  }, [visitasOrdenadas]);
 
   if (!cliente) {
     return (
@@ -49,10 +82,6 @@ export default function ClienteProfile() {
       </div>
     );
   }
-
-  const visitasOrdenadas = [...cliente.visitas].sort(
-    (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-  );
 
   const toggleServicio = (nombre: string) => {
     setServiciosSeleccionados((prev) =>
@@ -75,6 +104,7 @@ export default function ClienteProfile() {
   const registrarVisita = () => {
     if (serviciosSeleccionados.length === 0) return;
     const hoy = new Date().toISOString().split("T")[0];
+    const groupId = serviciosSeleccionados.length > 1 ? `g_${Date.now()}` : undefined;
 
     // Distribuir descuento proporcionalmente entre los servicios
     const factor = subtotal > 0 ? totalFinal / subtotal : 0;
@@ -83,7 +113,6 @@ export default function ClienteProfile() {
     serviciosSel.forEach((s, i) => {
       let precioFinal: number;
       if (i === serviciosSel.length - 1) {
-        // Último: el resto para evitar errores de redondeo
         precioFinal = Math.round((totalFinal - sumaAjustada) * 100) / 100;
       } else {
         precioFinal = Math.round(s.precio * factor * 100) / 100;
@@ -94,6 +123,7 @@ export default function ClienteProfile() {
         fecha: hoy,
         servicio: s.nombre,
         precio: precioFinal,
+        groupId,
       });
     });
 
@@ -111,6 +141,24 @@ export default function ClienteProfile() {
       setOpenEliminarVisita(null);
       setToast("🗑️ Visita eliminada");
     }
+  };
+
+  // ─── Editar visita ──────────────────────────────────────────────
+  const initEditarVisita = (v: typeof visitasOrdenadas[0]) => {
+    setEditVisitaServicio(v.servicio);
+    setEditVisitaPrecio(v.precio.toString());
+    setOpenEditarVisita(v.id);
+  };
+
+  const guardarEditarVisita = () => {
+    if (!openEditarVisita || !editVisitaServicio.trim()) return;
+    const sv = servicios.find((s) => s.nombre === editVisitaServicio);
+    updateVisita(openEditarVisita, {
+      servicio: editVisitaServicio.trim(),
+      precio: Number(editVisitaPrecio) || (sv ? sv.precio : 0),
+    });
+    setOpenEditarVisita(null);
+    setToast("✅ Visita actualizada");
   };
 
   const initEdit = () => {
@@ -263,6 +311,7 @@ export default function ClienteProfile() {
                           type="number"
                           value={descuento}
                           onChange={(e) => setDescuento(e.target.value)}
+                          onWheel={(e) => (e.target as HTMLElement).blur()}
                           min={0}
                           placeholder={tipoDescuento === "%" ? "10" : "2"}
                           className="flex-1"
@@ -401,7 +450,7 @@ export default function ClienteProfile() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {visitasOrdenadas.length === 0 ? (
+          {visitasAgrupadas.length === 0 ? (
             <p className="text-sm text-stone-500">Sin visitas registradas.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -410,37 +459,72 @@ export default function ClienteProfile() {
                   <tr className="border-b text-left text-stone-500">
                     <th className="pb-2 pr-4 font-medium">Fecha</th>
                     <th className="pb-2 pr-4 font-medium">Servicio</th>
-                    <th className="pb-2 pr-4 text-right font-medium">Precio</th>
-                    <th className="pb-2 w-10"></th>
+                    <th className="pb-2 pr-4 text-right font-medium">Total</th>
+                    <th className="pb-2 w-14"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visitasOrdenadas.map((v) => (
-                    <tr key={v.id} className="border-b last:border-0 group">
-                      <td className="py-2 pr-4 text-stone-600 whitespace-nowrap">
-                        {new Date(v.fecha).toLocaleDateString("es", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </td>
-                      <td className="py-2 pr-4">
-                        <Badge variant="secondary">{v.servicio}</Badge>
-                      </td>
-                      <td className="py-2 pr-4 text-right font-medium text-stone-700 whitespace-nowrap">
-                        ${v.precio}
-                      </td>
-                      <td className="py-2">
-                        <button
-                          onClick={() => setOpenEliminarVisita(v.id)}
-                          className="text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-sm"
-                          title="Eliminar visita"
-                        >
-                          ✕
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {visitasAgrupadas.map((item, idx) => {
+                    const esGrupo = item.visitas.length > 1;
+                    const totalGrupo = item.visitas.reduce((s, v) => s + v.precio, 0);
+                    const serviciosStr = item.visitas.map((v) => v.servicio).join(" + ");
+                    return (
+                      <tr key={item.grupo || item.visitas[0].id} className={`${idx < visitasAgrupadas.length - 1 ? "border-b" : ""} group`}>
+                        <td className="py-2 pr-4 text-stone-600 whitespace-nowrap align-top">
+                          {new Date(item.visitas[0].fecha).toLocaleDateString("es", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </td>
+                        <td className="py-2 pr-4">
+                          {esGrupo ? (
+                            <div className="space-y-1">
+                              <span className="font-medium text-stone-700 text-xs">
+                                {serviciosStr}
+                              </span>
+                              <div className="flex flex-wrap gap-1">
+                                {item.visitas.map((v) => (
+                                  <Badge key={v.id} variant="secondary" className="text-[10px]">
+                                    {v.servicio} ${v.precio.toFixed(2)}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <Badge variant="secondary">{item.visitas[0].servicio}</Badge>
+                          )}
+                        </td>
+                        <td className="py-2 pr-4 text-right font-medium text-stone-700 whitespace-nowrap align-top">
+                          {esGrupo ? (
+                            <span className="text-violet-700">${totalGrupo.toFixed(2)}</span>
+                          ) : (
+                            <span>$${item.visitas[0].precio.toFixed(2)}</span>
+                          )}
+                        </td>
+                        <td className="py-2 align-top">
+                          {item.visitas.map((v) => (
+                            <div key={v.id} className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => initEditarVisita(v)}
+                                className="text-stone-300 hover:text-blue-500 text-xs px-0.5"
+                                title="Editar visita"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => setOpenEliminarVisita(v.id)}
+                                className="text-stone-300 hover:text-red-500 text-xs px-0.5"
+                                title="Eliminar visita"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -505,6 +589,85 @@ export default function ClienteProfile() {
                   Eliminar
                 </Button>
               </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
+
+      {/* Dialog Editar Visita */}
+      {(() => {
+        const visitaAEditar = openEditarVisita
+          ? cliente.visitas.find((v) => v.id === openEditarVisita)
+          : null;
+        return (
+          <Dialog
+            open={openEditarVisita !== null}
+            onOpenChange={(open) => { if (!open) setOpenEditarVisita(null); }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>✏️ Editar visita</DialogTitle>
+              </DialogHeader>
+              {visitaAEditar && (
+                <div className="space-y-4">
+                  <p className="text-xs text-stone-500">
+                    Visita del{" "}
+                    {new Date(visitaAEditar.fecha).toLocaleDateString("es", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
+                  <div>
+                    <label className="text-sm font-medium text-stone-700 block mb-1">
+                      Servicio
+                    </label>
+                    <select
+                      value={editVisitaServicio}
+                      onChange={(e) => {
+                        const sv = servicios.find((s) => s.nombre === e.target.value);
+                        setEditVisitaServicio(e.target.value);
+                        if (sv) setEditVisitaPrecio(sv.precio.toString());
+                      }}
+                      className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    >
+                      {servicios.map((s) => (
+                        <option key={s.nombre} value={s.nombre}>
+                          {s.nombre} — ${s.precio}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-stone-700 block mb-1">
+                      Precio ($)
+                    </label>
+                    <Input
+                      type="number"
+                      value={editVisitaPrecio}
+                      onChange={(e) => setEditVisitaPrecio(e.target.value)}
+                      onWheel={(e) => (e.target as HTMLElement).blur()}
+                      min={0}
+                      step={0.5}
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setOpenEditarVisita(null)}
+                      className="flex-1"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={guardarEditarVisita}
+                      className="flex-1 bg-violet-600 hover:bg-violet-500"
+                    >
+                      Guardar cambios
+                    </Button>
+                  </div>
+                </div>
+              )}
             </DialogContent>
           </Dialog>
         );

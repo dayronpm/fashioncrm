@@ -12,6 +12,7 @@ interface StoreContextType {
   addCliente: (c: Omit<Cliente, "id">) => void;
   updateCliente: (id: string, data: Partial<Cliente>) => void;
   addVisita: (v: Omit<Visita, "id">) => void;
+  updateVisita: (id: string, data: Partial<Omit<Visita, "id">>) => void;
   deleteVisita: (id: string) => void;
   addServicio: (s: ServicioItem) => void;
   updateServicio: (nombreViejo: string, data: ServicioItem) => void;
@@ -112,6 +113,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateVisita = useCallback((id: string, fields: Partial<Omit<Visita, "id">>) => {
+    setData((prev) => ({
+      ...prev,
+      visitas: prev.visitas.map((v) => (v.id === id ? { ...v, ...fields } : v)),
+    }));
+  }, []);
+
   const addServicio = useCallback((s: ServicioItem) => {
     setServicios((prev) => [...prev, s]);
   }, []);
@@ -158,6 +166,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addCliente,
       updateCliente,
       addVisita,
+      updateVisita,
       deleteVisita,
       addServicio,
       updateServicio,
@@ -166,7 +175,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       getClientesConVisitas,
       resetDatabase,
     }),
-    [data, servicios, addCliente, updateCliente, addVisita, deleteVisita, addServicio, updateServicio, deleteServicio, getClienteConVisitas, getClientesConVisitas, resetDatabase]
+    [data, servicios, addCliente, updateCliente, addVisita, updateVisita, deleteVisita, addServicio, updateServicio, deleteServicio, getClienteConVisitas, getClientesConVisitas, resetDatabase]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
