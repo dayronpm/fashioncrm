@@ -22,9 +22,11 @@ export default function ClientesPage() {
   const { getClientesConVisitas, addCliente, clientes } = useStore();
   const [busqueda, setBusqueda] = useState("");
   const [open, setOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [cedula, setCedula] = useState("");
   const [nombre, setNombre] = useState("");
-  const [telefono, setTelefono] = useState("+507");
+  const [telefono, setTelefono] = useState("");
+  const [fechaNac, setFechaNac] = useState("");
 
   const clientesConVisitas = useMemo(() => getClientesConVisitas(), [getClientesConVisitas]);
 
@@ -41,23 +43,24 @@ export default function ClientesPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cedula.trim() || !nombre.trim() || !telefono.trim()) return;
+    if (!cedula.trim() || !nombre.trim()) return;
     // Validar cédula única
     const existe = clientes.find((c) => c.cedula === cedula.trim());
     if (existe) {
-      alert("Ya existe un cliente con esa cédula/pasaporte.");
+      setErrorMsg("Ya existe un cliente con esa cédula/pasaporte.");
       return;
     }
     addCliente({
       cedula: cedula.trim(),
       nombre: nombre.trim(),
-      telefono: telefono.trim(),
-      fechaNacimiento: null,
+      telefono: telefono.trim() || "",
+      fechaNacimiento: fechaNac || null,
       notasPref: null,
     });
     setCedula("");
     setNombre("");
-    setTelefono("+507");
+    setTelefono("");
+    setFechaNac("");
     setOpen(false);
   };
 
@@ -98,13 +101,22 @@ export default function ClientesPage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-stone-700 block mb-1">
-                  Teléfono *
+                  Teléfono <span className="text-stone-400">(opcional)</span>
                 </label>
                 <Input
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
                   placeholder="+50760000000"
-                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-stone-700 block mb-1">
+                  Fecha de nacimiento <span className="text-stone-400">(opcional)</span>
+                </label>
+                <Input
+                  type="date"
+                  value={fechaNac}
+                  onChange={(e) => setFechaNac(e.target.value)}
                 />
               </div>
               <Button type="submit" className="bg-violet-600 hover:bg-violet-500 w-full">
@@ -157,6 +169,22 @@ export default function ClientesPage() {
           </p>
         )}
       </div>
+
+      {/* Dialog Error */}
+      <Dialog open={errorMsg !== null} onOpenChange={(open) => { if (!open) setErrorMsg(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600">⚠️ Error</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-stone-700">{errorMsg}</p>
+          <Button
+            onClick={() => setErrorMsg(null)}
+            className="bg-violet-600 hover:bg-violet-500 w-full mt-2"
+          >
+            Entendido
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

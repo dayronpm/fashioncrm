@@ -18,6 +18,8 @@ export default function ServiciosPage() {
 
   const [openAgregar, setOpenAgregar] = useState(false);
   const [openEditar, setOpenEditar] = useState<string | null>(null);
+  const [openEliminar, setOpenEliminar] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoPrecio, setNuevoPrecio] = useState("");
   const [editNombre, setEditNombre] = useState("");
@@ -26,7 +28,7 @@ export default function ServiciosPage() {
   const handleAgregar = () => {
     if (!nuevoNombre.trim() || !nuevoPrecio.trim()) return;
     if (servicios.some((s) => s.nombre === nuevoNombre.trim())) {
-      alert("Ya existe un servicio con ese nombre.");
+      setErrorMsg("Ya existe un servicio con ese nombre.");
       return;
     }
     addServicio({
@@ -47,7 +49,7 @@ export default function ServiciosPage() {
   const handleEditar = () => {
     if (!editNombre.trim() || !editPrecio.trim()) return;
     if (openEditar && editNombre.trim() !== openEditar && servicios.some((s) => s.nombre === editNombre.trim())) {
-      alert("Ya existe un servicio con ese nombre.");
+      setErrorMsg("Ya existe un servicio con ese nombre.");
       return;
     }
     if (openEditar) {
@@ -59,9 +61,10 @@ export default function ServiciosPage() {
     setOpenEditar(null);
   };
 
-  const handleEliminar = (nombre: string) => {
-    if (confirm(`¿Eliminar el servicio "${nombre}"?`)) {
-      deleteServicio(nombre);
+  const handleEliminar = () => {
+    if (openEliminar) {
+      deleteServicio(openEliminar);
+      setOpenEliminar(null);
     }
   };
 
@@ -142,7 +145,7 @@ export default function ServiciosPage() {
                     variant="ghost"
                     size="sm"
                     className="text-stone-400 hover:text-red-600"
-                    onClick={() => handleEliminar(s.nombre)}
+                    onClick={() => setOpenEliminar(s.nombre)}
                   >
                     🗑️
                   </Button>
@@ -195,6 +198,53 @@ export default function ServiciosPage() {
               className="bg-violet-600 hover:bg-violet-500 w-full"
             >
               Guardar cambios
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Error */}
+      <Dialog open={errorMsg !== null} onOpenChange={(open) => { if (!open) setErrorMsg(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600">⚠️ Error</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-stone-700">{errorMsg}</p>
+          <Button
+            onClick={() => setErrorMsg(null)}
+            className="bg-violet-600 hover:bg-violet-500 w-full mt-2"
+          >
+            Entendido
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Confirmar Eliminación */}
+      <Dialog open={openEliminar !== null} onOpenChange={(open) => { if (!open) setOpenEliminar(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600">🗑️ Eliminar servicio</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-stone-700">
+            ¿Estás seguro de que deseas eliminar el servicio{' '}
+            <strong>{openEliminar}</strong>?
+          </p>
+          <p className="text-xs text-stone-500">
+            Esta acción no se puede deshacer. Las visitas existentes con este servicio no se verán afectadas.
+          </p>
+          <div className="flex gap-3 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setOpenEliminar(null)}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleEliminar}
+              className="flex-1 bg-red-600 hover:bg-red-500"
+            >
+              Eliminar
             </Button>
           </div>
         </DialogContent>
