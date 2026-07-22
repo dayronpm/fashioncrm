@@ -19,7 +19,7 @@ import { Toast } from "@/components/Toast";
 export default function ClienteProfile() {
   const params = useParams();
   const router = useRouter();
-  const { getClienteConVisitas, addVisita, updateVisita, deleteVisita, updateCliente, servicios } = useStore();
+  const { getClienteConVisitas, addVisita, deleteVisita, updateCliente, servicios } = useStore();
   const id = params.id as string;
 
   const cliente = useMemo(() => getClienteConVisitas(id), [id, getClienteConVisitas]);
@@ -27,19 +27,18 @@ export default function ClienteProfile() {
   const [openVisita, setOpenVisita] = useState(false);
   const [openEditar, setOpenEditar] = useState(false);
   const [openEliminarVisita, setOpenEliminarVisita] = useState<string | null>(null);
-  // Editar visita individual
-  const [openEditarVisita, setOpenEditarVisita] = useState<string | null>(null);
-  const [editVisitaServicio, setEditVisitaServicio] = useState("");
-  const [editVisitaPrecio, setEditVisitaPrecio] = useState("");
-  // Editar grupo de visitas
+  // Editar visita (único editor con checkboxes, sea individual o grupo)
   const [openEditarGrupo, setOpenEditarGrupo] = useState(false);
-  const [editarGrupoId, setEditarGrupoId] = useState<string | null>(null);
+  const [editarGrupoEsIndividual, setEditarGrupoEsIndividual] = useState(false);
+  const [editarGrupoOldId, setEditarGrupoOldId] = useState<string | null>(null);
   const [editarGrupoFecha, setEditarGrupoFecha] = useState("");
   const [editarGrupoServicios, setEditarGrupoServicios] = useState<string[]>([]);
   const [editarGrupoTipoDesc, setEditarGrupoTipoDesc] = useState<"%" | "$">("%");
   const [editarGrupoDesc, setEditarGrupoDesc] = useState("");
   // Registrar visita
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([]);
+  const [buscarServicio, setBuscarServicio] = useState("");
+  const [editarGrupoBuscar, setEditarGrupoBuscar] = useState("");
   const [tipoDescuento, setTipoDescuento] = useState<"%" | "$">("%");
   const [descuento, setDescuento] = useState("");
   const [toast, setToast] = useState<string | null>(null);
@@ -152,55 +151,57 @@ export default function ClienteProfile() {
     }
   };
 
-  // ─── Editar visita (individual o grupo) ────────────────────────
+  // ─── Editar visita (siempre con checkboxes, individual o grupo) ─
   const initEditarVisita = (v: typeof visitasOrdenadas[0]) => {
-    if (v.groupId) {
-      // Es parte de un grupo → abrir editor de grupo
-      const grupo = visitasAgrupadas.find((g) => g.grupo === v.groupId);
-      if (grupo) {
-        const nombres = grupo.visitas.map((x) => x.servicio);
-        setEditarGrupoId(v.groupId);
-        setEditarGrupoServicios(nombres);
-        setEditarGrupoFecha(grupo.visitas[0].fecha);
-        // Calcular descuento: comparar precio de lista vs lo pagado
-        const subtotalOriginal = nombres.reduce((sum, n) => {
-          const sv = servicios.find((s) => s.nombre === n);
-          return sum + (sv ? sv.precio : 0);
-        }, 0);
-        const totalActual = grupo.visitas.reduce((sum, x) => sum + x.precio, 0);
-        const diff = subtotalOriginal - totalActual;
-        if (diff > 0 && subtotalOriginal > 0) {
-          const pct = Math.round((diff / subtotalOriginal) * 100);
-          if (Math.abs(pct * subtotalOriginal / 100 - diff) < 0.01) {
-            setEditarGrupoTipoDesc("%");
-            setEditarGrupoDesc(pct.toString());
-          } else {
-            setEditarGrupoTipoDesc("$");
-            setEditarGrupoDesc(diff.toFixed(2));
-          }
-        } else {
-          setEditarGrupoTipoDesc("%");
-          setEditarGrupoDesc("0");
-        }
-        setOpenEditarGrupo(true);
-        return;
-      }
-    }
-    // Individual
-    setEditVisitaServicio(v.servicio);
-    setEditVisitaPrecio(v.precio.toString());
-    setOpenEditarVisita(v.id);
-  };
+    let nombres: string[];
+    let fecha: string;
+    let oldId: string;
+    let esIndividual: boolean;
 
-  const guardarEditarVisita = () => {
-    if (!openEditarVisita || !editVisitaServicio.trim()) return;
-    const sv = servicios.find((s) => s.nombre === editVisitaServicio);
-    updateVisita(openEditarVisita, {
-      servicio: editVisitaServicio.trim(),
-      precio: Number(editVisitaPrecio) || (sv ? sv.precio : 0),
-    });
-    setOpenEditarVisita(null);
-    setToast("✅ Visita actualizada");
+    if (v.groupId) {
+      const grupo = visitasAgrupadas.find((g) => g.grupo === v.groupId);
+      if (!grupo) return;
+      nombres = grupo.visitas.map((x) => x.servicio);
+      fecha = grupo.visitas[0].fecha;
+      oldId = v.groupId;
+      esIndividual = false;
+    } else {
+      nombres = [v.servicio];
+      fecha = v.fecha;
+      oldId = v.id;
+      esIndividual = true;
+    }
+
+    setEditarGrupoEsIndividual(esIndividual);
+    setEditarGrupoOldId(oldId);
+    setEditarGrupoServicios(nombres);
+    setEditarGrupoFecha(fecha);
+
+    // Calcular descuento original
+    const subtotalOriginal = nombres.reduce((sum, n) => {
+      const sv = servicios.find((s) => s.nombre === n);
+      return sum + (sv ? sv.precio : 0);
+    }, 0);
+    const totalActual = esIndividual
+      ? v.precio
+      : (visitasAgrupadas.find((g) => g.grupo === v.groupId)?.visitas.reduce((s, x) => s + x.precio, 0) ?? v.precio);
+    const diff = subtotalOriginal - totalActual;
+
+    if (diff > 0 && subtotalOriginal > 0) {
+      const pct = Math.round((diff / subtotalOriginal) * 100);
+      if (Math.abs(pct * subtotalOriginal / 100 - diff) < 0.01) {
+        setEditarGrupoTipoDesc("%");
+        setEditarGrupoDesc(pct.toString());
+      } else {
+        setEditarGrupoTipoDesc("$");
+        setEditarGrupoDesc(diff.toFixed(2));
+      }
+    } else {
+      setEditarGrupoTipoDesc("%");
+      setEditarGrupoDesc("0");
+    }
+
+    setOpenEditarGrupo(true);
   };
 
   const toggleEditarGrupo = (nombre: string) => {
@@ -212,9 +213,8 @@ export default function ClienteProfile() {
   };
 
   const guardarEditarGrupo = () => {
-    if (editarGrupoServicios.length === 0 || !editarGrupoId) return;
+    if (editarGrupoServicios.length === 0 || !editarGrupoOldId) return;
 
-    // Calcular total con descuento
     const svsSel = servicios.filter((s) => editarGrupoServicios.includes(s.nombre));
     const sub = svsSel.reduce((sum, s) => sum + s.precio, 0);
     const descVal = editarGrupoTipoDesc === "%"
@@ -223,9 +223,12 @@ export default function ClienteProfile() {
     const total = Math.max(0, sub - descVal);
     const factor = sub > 0 ? total / sub : 0;
 
-    // Eliminar visitas viejas del grupo
-    const visitasDelGrupo = cliente.visitas.filter((v) => v.groupId === editarGrupoId);
-    visitasDelGrupo.forEach((v) => deleteVisita(v.id));
+    // Eliminar visitas viejas
+    if (editarGrupoEsIndividual) {
+      deleteVisita(editarGrupoOldId);
+    } else {
+      cliente.visitas.filter((v) => v.groupId === editarGrupoOldId).forEach((v) => deleteVisita(v.id));
+    }
 
     // Crear nuevas visitas
     const newGroupId = svsSel.length > 1 ? `g_${Date.now()}` : undefined;
@@ -248,8 +251,8 @@ export default function ClienteProfile() {
     });
 
     setOpenEditarGrupo(false);
-    setEditarGrupoId(null);
-    setToast("✅ Grupo de visitas actualizado");
+    setEditarGrupoOldId(null);
+    setToast("✅ Visita actualizada");
   };
 
   const initEdit = () => {
@@ -330,9 +333,33 @@ export default function ClienteProfile() {
                   ¿Qué servicios se realizó {cliente.nombre}?
                 </p>
 
+                {/* Buscador de servicios */}
+                <Input
+                  placeholder="Buscar servicio..."
+                  value={buscarServicio}
+                  onChange={(e) => setBuscarServicio(e.target.value)}
+                  className="mb-1"
+                />
+
+                {/* Tags de servicios seleccionados */}
+                {serviciosSeleccionados.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {serviciosSeleccionados.map((nom) => (
+                      <Badge key={nom} variant="secondary" className="cursor-pointer gap-1 pr-1" onClick={() => toggleServicio(nom)}>
+                        {nom} <span className="text-stone-400 ml-0.5">✕</span>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
                 {/* Lista de servicios seleccionables */}
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {servicios.map((s) => {
+                  {servicios
+                    .filter((s) =>
+                      !buscarServicio ||
+                      s.nombre.toLowerCase().includes(buscarServicio.toLowerCase())
+                    )
+                    .map((s) => {
                     const selected = serviciosSeleccionados.includes(s.nombre);
                     return (
                       <label
@@ -358,6 +385,13 @@ export default function ClienteProfile() {
                       </label>
                     );
                   })}
+                  {servicios.filter((s) =>
+                    !buscarServicio || s.nombre.toLowerCase().includes(buscarServicio.toLowerCase())
+                  ).length === 0 && (
+                    <p className="text-xs text-stone-400 text-center py-4">
+                      No se encontraron servicios con ese nombre.
+                    </p>
+                  )}
                 </div>
 
                 {serviciosSeleccionados.length > 0 && (
@@ -594,24 +628,25 @@ export default function ClienteProfile() {
                           )}
                         </td>
                         <td className="py-2 align-top">
-                          {item.visitas.map((v) => (
-                            <div key={v.id} className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => initEditarVisita(item.visitas[0])}
+                              className="text-stone-300 hover:text-blue-500 text-xs px-0.5"
+                              title="Editar visita"
+                            >
+                              ✏️
+                            </button>
+                            {item.visitas.map((v) => (
                               <button
-                                onClick={() => initEditarVisita(v)}
-                                className="text-stone-300 hover:text-blue-500 text-xs px-0.5"
-                                title={esGrupo ? "Editar grupo" : "Editar visita"}
-                              >
-                                ✏️
-                              </button>
-                              <button
+                                key={v.id}
                                 onClick={() => setOpenEliminarVisita(v.id)}
                                 className="text-stone-300 hover:text-red-500 text-xs px-0.5"
-                                title="Eliminar visita"
+                                title={`Eliminar ${v.servicio}`}
                               >
                                 ✕
                               </button>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -685,90 +720,11 @@ export default function ClienteProfile() {
         );
       })()}
 
-      {/* Dialog Editar Visita */}
-      {(() => {
-        const visitaAEditar = openEditarVisita
-          ? cliente.visitas.find((v) => v.id === openEditarVisita)
-          : null;
-        return (
-          <Dialog
-            open={openEditarVisita !== null}
-            onOpenChange={(open) => { if (!open) setOpenEditarVisita(null); }}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>✏️ Editar visita</DialogTitle>
-              </DialogHeader>
-              {visitaAEditar && (
-                <div className="space-y-4">
-                  <p className="text-xs text-stone-500">
-                    Visita del{" "}
-                    {new Date(visitaAEditar.fecha).toLocaleDateString("es", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </p>
-                  <div>
-                    <label className="text-sm font-medium text-stone-700 block mb-1">
-                      Servicio
-                    </label>
-                    <select
-                      value={editVisitaServicio}
-                      onChange={(e) => {
-                        const sv = servicios.find((s) => s.nombre === e.target.value);
-                        setEditVisitaServicio(e.target.value);
-                        if (sv) setEditVisitaPrecio(sv.precio.toString());
-                      }}
-                      className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                    >
-                      {servicios.map((s) => (
-                        <option key={s.nombre} value={s.nombre}>
-                          {s.nombre} — ${s.precio}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-stone-700 block mb-1">
-                      Precio ($)
-                    </label>
-                    <Input
-                      type="number"
-                      value={editVisitaPrecio}
-                      onChange={(e) => setEditVisitaPrecio(e.target.value)}
-                      onWheel={(e) => (e.target as HTMLElement).blur()}
-                      min={0}
-                      step={0.5}
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setOpenEditarVisita(null)}
-                      className="flex-1"
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      onClick={guardarEditarVisita}
-                      className="flex-1 bg-violet-600 hover:bg-violet-500"
-                    >
-                      Guardar cambios
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
-        );
-      })()}
-
-      {/* Dialog Editar Grupo de Visitas */}
-      <Dialog open={openEditarGrupo} onOpenChange={(open) => { if (!open) { setOpenEditarGrupo(false); setEditarGrupoId(null); }}}>
+      {/* Dialog Editar Visita (checkboxes) */}
+      <Dialog open={openEditarGrupo} onOpenChange={(open) => { if (!open) { setOpenEditarGrupo(false); setEditarGrupoOldId(null); }}}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>✏️ Editar visita grupal</DialogTitle>
+            <DialogTitle>✏️ Editar visita</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-xs text-stone-500">
@@ -779,12 +735,33 @@ export default function ClienteProfile() {
                 year: "numeric",
               })}
             </p>
-            <p className="text-sm text-stone-500">
-              Marca o desmarca los servicios incluidos:
-            </p>
 
+            {/* Buscador */}
+            <Input
+              placeholder="Buscar servicio..."
+              value={editarGrupoBuscar}
+              onChange={(e) => setEditarGrupoBuscar(e.target.value)}
+            />
+
+            {/* Tags servicios seleccionados */}
+            {editarGrupoServicios.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {editarGrupoServicios.map((nom) => (
+                  <Badge key={nom} variant="secondary" className="cursor-pointer gap-1 pr-1" onClick={() => toggleEditarGrupo(nom)}>
+                    {nom} <span className="text-stone-400 ml-0.5">✕</span>
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Lista filtrada */}
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-              {servicios.map((s) => {
+              {servicios
+                .filter((s) =>
+                  !editarGrupoBuscar ||
+                  s.nombre.toLowerCase().includes(editarGrupoBuscar.toLowerCase())
+                )
+                .map((s) => {
                 const sel = editarGrupoServicios.includes(s.nombre);
                 return (
                   <label
@@ -808,6 +785,12 @@ export default function ClienteProfile() {
                   </label>
                 );
               })}
+              {servicios.filter((s) =>
+                !editarGrupoBuscar ||
+                s.nombre.toLowerCase().includes(editarGrupoBuscar.toLowerCase())
+              ).length === 0 && (
+                <p className="text-xs text-stone-400 text-center py-4">No se encontraron servicios.</p>
+              )}
             </div>
 
             {editarGrupoServicios.length > 0 && (
@@ -880,7 +863,7 @@ export default function ClienteProfile() {
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={() => { setOpenEditarGrupo(false); setEditarGrupoId(null); }}
+                onClick={() => { setOpenEditarGrupo(false); setEditarGrupoOldId(null); }}
                 className="flex-1"
               >
                 Cancelar
