@@ -26,7 +26,7 @@ export default function ClienteProfile() {
 
   const [openVisita, setOpenVisita] = useState(false);
   const [openEditar, setOpenEditar] = useState(false);
-  const [openEliminarVisita, setOpenEliminarVisita] = useState<string | null>(null);
+  const [eliminarInfo, setEliminarInfo] = useState<{ groupId?: string; visitaId?: string } | null>(null);
   // Editar visita (único editor con checkboxes, sea individual o grupo)
   const [openEditarGrupo, setOpenEditarGrupo] = useState(false);
   const [editarGrupoEsIndividual, setEditarGrupoEsIndividual] = useState(false);
@@ -144,11 +144,14 @@ export default function ClienteProfile() {
   };
 
   const confirmarEliminarVisita = () => {
-    if (openEliminarVisita) {
-      deleteVisita(openEliminarVisita);
-      setOpenEliminarVisita(null);
-      setToast("🗑️ Visita eliminada");
+    if (!eliminarInfo) return;
+    if (eliminarInfo.groupId) {
+      cliente.visitas.filter((v) => v.groupId === eliminarInfo.groupId).forEach((v) => deleteVisita(v.id));
+    } else if (eliminarInfo.visitaId) {
+      deleteVisita(eliminarInfo.visitaId);
     }
+    setEliminarInfo(null);
+    setToast("🗑️ Visita eliminada");
   };
 
   // ─── Editar visita (siempre con checkboxes, individual o grupo) ─
@@ -324,7 +327,7 @@ export default function ClienteProfile() {
             <DialogTrigger className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-md text-sm font-medium inline-flex items-center justify-center">
               + Registrar visita
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle>Registrar visita</DialogTitle>
               </DialogHeader>
@@ -338,10 +341,9 @@ export default function ClienteProfile() {
                   placeholder="Buscar servicio..."
                   value={buscarServicio}
                   onChange={(e) => setBuscarServicio(e.target.value)}
-                  className="mb-1"
                 />
 
-                {/* Tags de servicios seleccionados */}
+                {/* Servicios seleccionados como badges */}
                 {serviciosSeleccionados.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {serviciosSeleccionados.map((nom) => (
@@ -352,8 +354,8 @@ export default function ClienteProfile() {
                   </div>
                 )}
 
-                {/* Lista de servicios seleccionables */}
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {/* Grid de servicios */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1">
                   {servicios
                     .filter((s) =>
                       !buscarServicio ||
@@ -362,34 +364,31 @@ export default function ClienteProfile() {
                     .map((s) => {
                     const selected = serviciosSeleccionados.includes(s.nombre);
                     return (
-                      <label
+                      <button
                         key={s.nombre}
-                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                        type="button"
+                        onClick={() => toggleServicio(s.nombre)}
+                        className={`p-3 rounded-lg border text-center transition-all cursor-pointer ${
                           selected
-                            ? "border-violet-400 bg-violet-50 ring-1 ring-violet-400"
-                            : "border-stone-200 hover:border-stone-300"
+                            ? "border-violet-400 bg-violet-50 ring-2 ring-violet-400"
+                            : "border-stone-200 hover:border-stone-300 hover:bg-stone-50"
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={selected}
-                            onChange={() => toggleServicio(s.nombre)}
-                            className="accent-violet-600 w-4 h-4"
-                          />
-                          <span className="text-sm font-medium text-stone-800">
-                            {s.nombre}
-                          </span>
-                        </div>
-                        <span className="text-sm text-stone-500">${s.precio}</span>
-                      </label>
+                        <span className="font-medium text-sm text-stone-800 block">
+                          {s.nombre}
+                        </span>
+                        <span className="text-xs text-stone-500">${s.precio}</span>
+                        {selected && (
+                          <span className="block text-xs text-violet-600 mt-1">✔</span>
+                        )}
+                      </button>
                     );
                   })}
                   {servicios.filter((s) =>
                     !buscarServicio || s.nombre.toLowerCase().includes(buscarServicio.toLowerCase())
                   ).length === 0 && (
-                    <p className="text-xs text-stone-400 text-center py-4">
-                      No se encontraron servicios con ese nombre.
+                    <p className="text-xs text-stone-400 col-span-full text-center py-6">
+                      No se encontraron servicios.
                     </p>
                   )}
                 </div>
@@ -636,16 +635,19 @@ export default function ClienteProfile() {
                             >
                               ✏️
                             </button>
-                            {item.visitas.map((v) => (
-                              <button
-                                key={v.id}
-                                onClick={() => setOpenEliminarVisita(v.id)}
-                                className="text-stone-300 hover:text-red-500 text-xs px-0.5"
-                                title={`Eliminar ${v.servicio}`}
-                              >
-                                ✕
-                              </button>
-                            ))}
+                            <button
+                              onClick={() =>
+                                setEliminarInfo(
+                                  item.grupo
+                                    ? { groupId: item.grupo }
+                                    : { visitaId: item.visitas[0].id }
+                                )
+                              }
+                              className="text-stone-300 hover:text-red-500 text-xs px-0.5"
+                              title="Eliminar visita"
+                            >
+                              ✕
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -659,70 +661,57 @@ export default function ClienteProfile() {
       </Card>
       </div>
 
-      {/* Dialog Confirmar Eliminación de Visita */}
-      {(() => {
-        const visitaAEliminar = openEliminarVisita
-          ? cliente.visitas.find((v) => v.id === openEliminarVisita)
-          : null;
-        return (
-          <Dialog
-            open={openEliminarVisita !== null}
-            onOpenChange={(open) => { if (!open) setOpenEliminarVisita(null); }}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle className="text-red-600">🗑️ Eliminar visita</DialogTitle>
-              </DialogHeader>
-              {visitaAEliminar && (
-                <div className="space-y-3 bg-stone-50 rounded-lg p-4 border">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-stone-500">Fecha</span>
-                    <span className="font-medium text-stone-800">
-                      {new Date(visitaAEliminar.fecha).toLocaleDateString("es", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-stone-500">Servicio</span>
-                    <Badge variant="secondary">{visitaAEliminar.servicio}</Badge>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-stone-500">Precio</span>
-                    <span className="font-medium text-stone-800">
-                      ${visitaAEliminar.precio.toFixed(2)}
-                    </span>
+      {/* Dialog Confirmar Eliminación */}
+      <Dialog open={eliminarInfo !== null} onOpenChange={(open) => { if (!open) setEliminarInfo(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600">🗑️ Eliminar visita</DialogTitle>
+          </DialogHeader>
+          {(() => {
+            let visitas: typeof visitasOrdenadas = [];
+            if (eliminarInfo?.groupId) {
+              visitas = cliente.visitas.filter((v) => v.groupId === eliminarInfo.groupId);
+            } else if (eliminarInfo?.visitaId) {
+              const v = cliente.visitas.find((x) => x.id === eliminarInfo.visitaId);
+              if (v) visitas = [v];
+            }
+            if (visitas.length === 0) return null;
+            return (
+              <div className="space-y-3 bg-stone-50 rounded-lg p-4 border">
+                <div className="flex justify-between text-sm">
+                  <span className="text-stone-500">Fecha</span>
+                  <span className="font-medium text-stone-800">
+                    {new Date(visitas[0].fecha).toLocaleDateString("es", {
+                      day: "numeric", month: "long", year: "numeric",
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-stone-500">Servicios</span>
+                  <div className="flex flex-wrap gap-1">
+                    {visitas.map((v) => (
+                      <Badge key={v.id} variant="secondary">{v.servicio} ${v.precio.toFixed(2)}</Badge>
+                    ))}
                   </div>
                 </div>
-              )}
-              <p className="text-xs text-stone-500">
-                Esta acción no se puede deshacer.
-              </p>
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setOpenEliminarVisita(null)}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={confirmarEliminarVisita}
-                  className="flex-1 bg-red-600 hover:bg-red-500"
-                >
-                  Eliminar
-                </Button>
+                <div className="flex justify-between text-sm border-t pt-2">
+                  <span className="text-stone-500">Total</span>
+                  <span className="font-bold text-stone-800">${visitas.reduce((s, v) => s + v.precio, 0).toFixed(2)}</span>
+                </div>
               </div>
-            </DialogContent>
-          </Dialog>
-        );
-      })()}
+            );
+          })()}
+          <p className="text-xs text-stone-500">Esta acción no se puede deshacer.</p>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => setEliminarInfo(null)} className="flex-1">Cancelar</Button>
+            <Button onClick={confirmarEliminarVisita} className="flex-1 bg-red-600 hover:bg-red-500">Eliminar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* Dialog Editar Visita (checkboxes) */}
+      {/* Dialog Editar Visita */}
       <Dialog open={openEditarGrupo} onOpenChange={(open) => { if (!open) { setOpenEditarGrupo(false); setEditarGrupoOldId(null); }}}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>✏️ Editar visita</DialogTitle>
           </DialogHeader>
@@ -743,7 +732,7 @@ export default function ClienteProfile() {
               onChange={(e) => setEditarGrupoBuscar(e.target.value)}
             />
 
-            {/* Tags servicios seleccionados */}
+            {/* Servicios seleccionados como badges */}
             {editarGrupoServicios.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {editarGrupoServicios.map((nom) => (
@@ -754,8 +743,8 @@ export default function ClienteProfile() {
               </div>
             )}
 
-            {/* Lista filtrada */}
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            {/* Grid de servicios */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1">
               {servicios
                 .filter((s) =>
                   !editarGrupoBuscar ||
@@ -764,32 +753,29 @@ export default function ClienteProfile() {
                 .map((s) => {
                 const sel = editarGrupoServicios.includes(s.nombre);
                 return (
-                  <label
+                  <button
                     key={s.nombre}
-                    className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                    type="button"
+                    onClick={() => toggleEditarGrupo(s.nombre)}
+                    className={`p-3 rounded-lg border text-center transition-all cursor-pointer ${
                       sel
-                        ? "border-violet-400 bg-violet-50 ring-1 ring-violet-400"
-                        : "border-stone-200 hover:border-stone-300"
+                        ? "border-violet-400 bg-violet-50 ring-2 ring-violet-400"
+                        : "border-stone-200 hover:border-stone-300 hover:bg-stone-50"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={sel}
-                        onChange={() => toggleEditarGrupo(s.nombre)}
-                        className="accent-violet-600 w-4 h-4"
-                      />
-                      <span className="text-sm font-medium text-stone-800">{s.nombre}</span>
-                    </div>
-                    <span className="text-sm text-stone-500">${s.precio}</span>
-                  </label>
+                    <span className="font-medium text-sm text-stone-800 block">{s.nombre}</span>
+                    <span className="text-xs text-stone-500">${s.precio}</span>
+                    {sel && (
+                      <span className="block text-xs text-violet-600 mt-1">✔</span>
+                    )}
+                  </button>
                 );
               })}
               {servicios.filter((s) =>
                 !editarGrupoBuscar ||
                 s.nombre.toLowerCase().includes(editarGrupoBuscar.toLowerCase())
               ).length === 0 && (
-                <p className="text-xs text-stone-400 text-center py-4">No se encontraron servicios.</p>
+                <p className="text-xs text-stone-400 col-span-full text-center py-6">No se encontraron servicios.</p>
               )}
             </div>
 
