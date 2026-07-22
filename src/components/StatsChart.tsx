@@ -13,6 +13,7 @@ import {
 import { useStore } from "@/lib/store";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { parseDateLocal } from "@/lib/utils";
 
 type Modo = "ingresos" | "cortes";
 
@@ -23,9 +24,16 @@ export default function StatsChart() {
   const data = useMemo(() => {
     const semanas: Record<string, { ingresos: number; cortes: number }> = {};
 
+    // Rango de fechas para mostrar semanas sin datos también
+    let minDate = Infinity;
+    let maxDate = -Infinity;
+
     for (const v of visitas) {
-      const d = new Date(v.fecha);
-      // Get Monday of the week
+      const d = parseDateLocal(v.fecha);
+      const ts = d.getTime();
+      if (ts < minDate) minDate = ts;
+      if (ts > maxDate) maxDate = ts;
+
       const dia = d.getDay();
       const diff = d.getDate() - dia + (dia === 0 ? -6 : 1);
       const lunes = new Date(d);
@@ -39,10 +47,30 @@ export default function StatsChart() {
       semanas[key].cortes += 1;
     }
 
+    // Rellenar semanas vacías entre minDate y maxDate
+    if (minDate !== Infinity && maxDate !== -Infinity) {
+      const inicio = new Date(minDate);
+      const fin = new Date(maxDate);
+      // Ir al lunes de cada semana
+      const ajustarALunes = (d: Date) => {
+        const dia = d.getDay();
+        d.setDate(d.getDate() - dia + (dia === 0 ? -6 : 1));
+        return d;
+      };
+      const current = ajustarALunes(new Date(inicio));
+      while (current <= fin) {
+        const key = current.toISOString().split("T")[0];
+        if (!semanas[key]) {
+          semanas[key] = { ingresos: 0, cortes: 0 };
+        }
+        current.setDate(current.getDate() + 7);
+      }
+    }
+
     return Object.entries(semanas)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([semana, vals]) => ({
-        semana: new Date(semana).toLocaleDateString("es", {
+        semana: parseDateLocal(semana).toLocaleDateString("es", {
           day: "numeric",
           month: "short",
         }),

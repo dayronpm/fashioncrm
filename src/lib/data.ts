@@ -12,7 +12,7 @@ export const PRECIO_POR_DEFECTO = 8;
 
 // ─── Helper para fechas ───────────────────────────────────────────
 const daysAgo = (d: number): string => {
-  const date = new Date("2026-07-20");
+  const date = new Date();
   date.setDate(date.getDate() - d);
   return date.toISOString().split("T")[0];
 };
@@ -278,7 +278,7 @@ function makeVisits(
     clienteId,
     fecha: daysAgo(d),
     servicio,
-    precio: precio || randomPrice(PRECIO_POR_DEFECTO),
+    precio: precio ?? randomPrice(PRECIO_POR_DEFECTO),
   }));
 }
 

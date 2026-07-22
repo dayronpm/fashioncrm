@@ -51,7 +51,10 @@ export default function ClientesPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cedula.trim() || !nombre.trim()) return;
+    if (!cedula.trim() || !nombre.trim()) {
+      setErrorMsg("Debes completar al menos la cédula y el nombre.");
+      return;
+    }
     // Validar cédula única
     const existe = clientes.find((c) => c.cedula === cedula.trim());
     if (existe) {

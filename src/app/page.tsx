@@ -4,6 +4,7 @@ import { useStore } from "@/lib/store";
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { parseDateLocal, formatDateLocal } from "@/lib/utils";
 import StatsChart from "@/components/StatsChart";
 
 export default function Dashboard() {
@@ -15,7 +16,7 @@ export default function Dashboard() {
   // Cumpleañeros esta semana (próximos 7 días)
   const cumpleanieros = clientes.filter((c) => {
     if (!c.fechaNacimiento) return false;
-    const nac = new Date(c.fechaNacimiento);
+    const nac = parseDateLocal(c.fechaNacimiento);
     // Comparar mes y día dentro de los próximos 7 días
     for (let i = 0; i < 7; i++) {
       const check = new Date(hoy);
@@ -96,7 +97,6 @@ export default function Dashboard() {
               </p>
             )}
             {cumpleanieros.map((c) => {
-              const nac = new Date(c.fechaNacimiento!);
               return (
                 <div
                   key={c.id}
@@ -105,7 +105,7 @@ export default function Dashboard() {
                   <div>
                     <p className="font-medium text-sm text-stone-800">{c.nombre}</p>
                     <p className="text-xs text-stone-500">
-                      {nac.toLocaleDateString("es", { day: "numeric", month: "long" })}
+                      {formatDateLocal(c.fechaNacimiento!, { day: "numeric", month: "long" })}
                     </p>
                   </div>
                   {c.telefono && (

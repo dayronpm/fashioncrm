@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from "react";
 import { Cliente, Visita, ClienteConVisitas, ServicioItem } from "./types";
 import { getSeedData, SEED_SERVICIOS } from "./data";
+import { parseDateLocal } from "./utils";
 
 // ─── Store simple en memoria ──────────────────────────────────────
 interface StoreContextType {
@@ -32,9 +33,9 @@ function agruparSesiones(visitas: Visita[]): { fecha: string }[] {
   const sesiones: { fecha: string }[] = [];
   const gruposVistos = new Set<string>();
 
-  // Ordenar por fecha descendente para mantener el orden
+  // Ordenar por fecha ascendente para calcular gaps
   const ordenadas = [...visitas].sort(
-    (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+    (a, b) => parseDateLocal(a.fecha).getTime() - parseDateLocal(b.fecha).getTime()
   );
 
   for (const v of ordenadas) {
@@ -78,14 +79,16 @@ function calcularFrecuencia(visitas: Visita[]): {
 
   if (sesiones.length < 2) {
     const hoy = new Date();
-    const ultima = sesiones.length === 1 ? new Date(sesiones[0].fecha) : null;
+    const ultima = sesiones.length === 1 ? parseDateLocal(sesiones[0].fecha) : null;
     const diasDesde = ultima
       ? Math.floor((hoy.getTime() - ultima.getTime()) / (1000 * 60 * 60 * 24))
       : 0;
+    // Marcar como en riesgo si tiene 1 sola visita y pasaron más de 60 días
+    const enRiesgoUnico = sesiones.length === 1 && diasDesde > 60;
     return {
       frecuenciaPromedio: null,
       proximaVisita: null,
-      enRiesgo: false,
+      enRiesgo: enRiesgoUnico,
       diasDesdeUltimaVisita: diasDesde,
     };
   }
@@ -93,12 +96,12 @@ function calcularFrecuencia(visitas: Visita[]): {
   let totalDias = 0;
   for (let i = 1; i < sesiones.length; i++) {
     totalDias +=
-      (new Date(sesiones[i].fecha).getTime() - new Date(sesiones[i - 1].fecha).getTime()) /
+      (parseDateLocal(sesiones[i].fecha).getTime() - parseDateLocal(sesiones[i - 1].fecha).getTime()) /
       (1000 * 60 * 60 * 24);
   }
   const frecuencia = Math.round(totalDias / (sesiones.length - 1));
 
-  const ultimaFecha = new Date(sesiones[sesiones.length - 1].fecha);
+  const ultimaFecha = parseDateLocal(sesiones[sesiones.length - 1].fecha);
   const hoy = new Date();
   const diasDesde = Math.floor((hoy.getTime() - ultimaFecha.getTime()) / (1000 * 60 * 60 * 24));
 

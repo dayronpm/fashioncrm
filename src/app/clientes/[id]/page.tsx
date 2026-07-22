@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useStore, contarSesiones } from "@/lib/store";
+import { formatDateLocal } from "@/lib/utils";
 import { useMemo, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +20,7 @@ import { Toast } from "@/components/Toast";
 export default function ClienteProfile() {
   const params = useParams();
   const router = useRouter();
-  const { getClienteConVisitas, addVisita, deleteVisita, updateCliente, servicios } = useStore();
+  const { getClienteConVisitas, addVisita, deleteVisita, updateCliente, clientes, servicios } = useStore();
   const id = params.id as string;
 
   const cliente = useMemo(() => getClienteConVisitas(id), [id, getClienteConVisitas]);
@@ -269,6 +270,14 @@ export default function ClienteProfile() {
 
   const guardarEdicion = () => {
     if (!editNombre.trim()) return;
+    // Verificar cédula única (excepto el mismo cliente)
+    const duplicado = clientes.find(
+      (c) => c.cedula === editCedula.trim() && c.id !== cliente.id
+    );
+    if (duplicado) {
+      setToast("⚠️ Esa cédula/pasaporte ya pertenece a otro cliente");
+      return;
+    }
     updateCliente(cliente.id, {
       cedula: editCedula.trim(),
       nombre: editNombre.trim(),
@@ -298,10 +307,7 @@ export default function ClienteProfile() {
           <p className="text-xs text-stone-400">🪪 {cliente.cedula}</p>
           {cliente.fechaNacimiento && (
             <p className="text-xs text-stone-400">
-              🎂 {new Date(cliente.fechaNacimiento).toLocaleDateString("es", {
-                day: "numeric",
-                month: "long",
-              })}
+              🎂 {formatDateLocal(cliente.fechaNacimiento, { day: "numeric", month: "long" })}
             </p>
           )}
           {cliente.notasPref && (
@@ -498,7 +504,7 @@ export default function ClienteProfile() {
             </div>
             <div>
               <label className="text-sm font-medium text-stone-700 block mb-1">
-                Teléfono *
+                Teléfono <span className="text-stone-400">(opcional)</span>
               </label>
               <Input
                 type="tel"
@@ -552,10 +558,7 @@ export default function ClienteProfile() {
               <strong>{cliente.frecuenciaPromedio} días</strong>.
               Próxima visita esperada:{" "}
               <strong>
-                {new Date(cliente.proximaVisita!).toLocaleDateString("es", {
-                  day: "numeric",
-                  month: "long",
-                })}
+                {formatDateLocal(cliente.proximaVisita!, { day: "numeric", month: "long" })}
               </strong>
               .
             </p>
@@ -598,11 +601,7 @@ export default function ClienteProfile() {
                     return (
                       <tr key={item.grupo || item.visitas[0].id} className={`${idx < visitasAgrupadas.length - 1 ? "border-b" : ""} group`}>
                         <td className="py-2 pr-4 text-stone-600 whitespace-nowrap align-top">
-                          {new Date(item.visitas[0].fecha).toLocaleDateString("es", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
+                          {formatDateLocal(item.visitas[0].fecha)}
                         </td>
                         <td className="py-2 pr-4">
                           {esGrupo ? (
@@ -684,9 +683,7 @@ export default function ClienteProfile() {
                 <div className="flex justify-between text-sm">
                   <span className="text-stone-500">Fecha</span>
                   <span className="font-medium text-stone-800">
-                    {new Date(visitas[0].fecha).toLocaleDateString("es", {
-                      day: "numeric", month: "long", year: "numeric",
-                    })}
+                    {formatDateLocal(visitas[0].fecha, { day: "numeric", month: "long", year: "numeric" })}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -721,11 +718,7 @@ export default function ClienteProfile() {
           <div className="space-y-4">
             <p className="text-xs text-stone-500">
               Visita del{" "}
-              {new Date(editarGrupoFecha).toLocaleDateString("es", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
+              {formatDateLocal(editarGrupoFecha, { day: "numeric", month: "long", year: "numeric" })}
             </p>
 
             {/* Buscador */}
