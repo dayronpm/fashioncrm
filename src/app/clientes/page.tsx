@@ -112,9 +112,11 @@ export default function ClientesPage() {
                   Teléfono <span className="text-stone-400">(opcional)</span>
                 </label>
                 <Input
+                  type="tel"
                   value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
+                  onChange={(e) => setTelefono(e.target.value.replace(/[^0-9+]/g, ""))}
                   placeholder="+50760000000"
+                  inputMode="numeric"
                 />
               </div>
               <div>

@@ -232,14 +232,25 @@ export default function ServiciosPage() {
           <DialogHeader>
             <DialogTitle className="text-red-600">🗑️ Eliminar servicio</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-stone-700">
-            ¿Estás seguro de que deseas eliminar el servicio{' '}
-            <strong>{openEliminar}</strong>?
-          </p>
+          {(() => {
+            const sv = servicios.find((s) => s.nombre === openEliminar);
+            return sv ? (
+              <div className="space-y-3 bg-stone-50 rounded-lg p-4 border">
+                <div className="flex justify-between text-sm">
+                  <span className="text-stone-500">Servicio</span>
+                  <span className="font-medium text-stone-800">{sv.nombre}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-stone-500">Precio</span>
+                  <span className="font-medium text-stone-800">${sv.precio.toFixed(2)}</span>
+                </div>
+              </div>
+            ) : null;
+          })()}
           <p className="text-xs text-stone-500">
             Esta acción no se puede deshacer. Las visitas existentes con este servicio no se verán afectadas.
           </p>
-          <div className="flex gap-3 mt-2">
+          <div className="flex gap-3">
             <Button
               variant="outline"
               onClick={() => setOpenEliminar(null)}

@@ -23,15 +23,13 @@ export default function ClienteProfile() {
   const id = params.id as string;
 
   const cliente = useMemo(() => getClienteConVisitas(id), [id, getClienteConVisitas]);
-  const servicioPorDefecto = servicios.length > 0 ? servicios[0].nombre : "";
 
   const [openVisita, setOpenVisita] = useState(false);
   const [openEditar, setOpenEditar] = useState(false);
   const [openEliminarVisita, setOpenEliminarVisita] = useState<string | null>(null);
-  const [servicio, setServicio] = useState(servicioPorDefecto);
-  const [precio, setPrecio] = useState(
-    servicios.length > 0 ? servicios[0].precio.toString() : "0"
-  );
+  const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([]);
+  const [tipoDescuento, setTipoDescuento] = useState<"%" | "$">("%");
+  const [descuento, setDescuento] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [editCedula, setEditCedula] = useState("");
   const [editNombre, setEditNombre] = useState("");
@@ -56,27 +54,55 @@ export default function ClienteProfile() {
     (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
   );
 
-  const seleccionarServicio = (s: string) => {
-    setServicio(s);
-    const sv = servicios.find((sv) => sv.nombre === s);
-    setPrecio(sv ? sv.precio.toString() : "0");
+  const toggleServicio = (nombre: string) => {
+    setServiciosSeleccionados((prev) =>
+      prev.includes(nombre)
+        ? prev.filter((n) => n !== nombre)
+        : [...prev, nombre]
+    );
   };
 
-  const getPrecioServicio = (s: string): number => {
-    const sv = servicios.find((sv) => sv.nombre === s);
-    return sv ? sv.precio : 0;
-  };
+  const serviciosSel = servicios.filter((s) =>
+    serviciosSeleccionados.includes(s.nombre)
+  );
+  const subtotal = serviciosSel.reduce((sum, s) => sum + s.precio, 0);
+  const descValor =
+    tipoDescuento === "%"
+      ? subtotal * (Number(descuento) || 0) / 100
+      : Number(descuento) || 0;
+  const totalFinal = Math.max(0, subtotal - descValor);
 
   const registrarVisita = () => {
+    if (serviciosSeleccionados.length === 0) return;
     const hoy = new Date().toISOString().split("T")[0];
-    addVisita({
-      clienteId: cliente.id,
-      fecha: hoy,
-      servicio,
-      precio: Number(precio) || getPrecioServicio(servicio),
+
+    // Distribuir descuento proporcionalmente entre los servicios
+    const factor = subtotal > 0 ? totalFinal / subtotal : 0;
+    let sumaAjustada = 0;
+
+    serviciosSel.forEach((s, i) => {
+      let precioFinal: number;
+      if (i === serviciosSel.length - 1) {
+        // Último: el resto para evitar errores de redondeo
+        precioFinal = Math.round((totalFinal - sumaAjustada) * 100) / 100;
+      } else {
+        precioFinal = Math.round(s.precio * factor * 100) / 100;
+        sumaAjustada += precioFinal;
+      }
+      addVisita({
+        clienteId: cliente.id,
+        fecha: hoy,
+        servicio: s.nombre,
+        precio: precioFinal,
+      });
     });
+
+    setServiciosSeleccionados([]);
+    setDescuento("");
     setOpenVisita(false);
-    setToast("✅ Visita registrada correctamente");
+    setToast(
+      `✅ ${serviciosSel.length} servicio${serviciosSel.length > 1 ? "s" : ""} registrado${serviciosSel.length > 1 ? "s" : ""} ($${totalFinal.toFixed(2)})`
+    );
   };
 
   const confirmarEliminarVisita = () => {
@@ -156,47 +182,112 @@ export default function ClienteProfile() {
             <DialogTrigger className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-md text-sm font-medium inline-flex items-center justify-center">
               + Registrar visita
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Registrar visita</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <p className="text-sm text-stone-500">
-                  ¿Qué servicio se realizó {cliente.nombre}?
+                  ¿Qué servicios se realizó {cliente.nombre}?
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {servicios.map((s) => (
-                    <Button
-                      key={s.nombre}
-                      type="button"
-                      variant={servicio === s.nombre ? "default" : "outline"}
-                      onClick={() => seleccionarServicio(s.nombre)}
-                      className={
-                        servicio === s.nombre
-                          ? "bg-violet-600 hover:bg-violet-500"
-                          : ""
-                      }
-                    >
-                      {s.nombre} ${s.precio}
-                    </Button>
-                  ))}
+
+                {/* Lista de servicios seleccionables */}
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {servicios.map((s) => {
+                    const selected = serviciosSeleccionados.includes(s.nombre);
+                    return (
+                      <label
+                        key={s.nombre}
+                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selected
+                            ? "border-violet-400 bg-violet-50 ring-1 ring-violet-400"
+                            : "border-stone-200 hover:border-stone-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => toggleServicio(s.nombre)}
+                            className="accent-violet-600 w-4 h-4"
+                          />
+                          <span className="text-sm font-medium text-stone-800">
+                            {s.nombre}
+                          </span>
+                        </div>
+                        <span className="text-sm text-stone-500">${s.precio}</span>
+                      </label>
+                    );
+                  })}
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-stone-700 block mb-1">
-                    Precio ($)
-                  </label>
-                  <Input
-                    type="number"
-                    value={precio}
-                    onChange={(e) => setPrecio(e.target.value)}
-                    min={1}
-                  />
-                </div>
+
+                {serviciosSeleccionados.length > 0 && (
+                  <>
+                    {/* Subtotal */}
+                    <div className="flex justify-between text-sm text-stone-600 border-t pt-3">
+                      <span>Subtotal</span>
+                      <span className="font-medium">${subtotal.toFixed(2)}</span>
+                    </div>
+
+                    {/* Descuento */}
+                    <div>
+                      <label className="text-sm font-medium text-stone-700 block mb-2">
+                        Descuento
+                      </label>
+                      <div className="flex gap-2">
+                        <div className="flex rounded-lg border overflow-hidden shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setTipoDescuento("%")}
+                            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                              tipoDescuento === "%"
+                                ? "bg-violet-600 text-white"
+                                : "bg-white text-stone-600 hover:bg-stone-50"
+                            }`}
+                          >
+                            %
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTipoDescuento("$")}
+                            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                              tipoDescuento === "$"
+                                ? "bg-violet-600 text-white"
+                                : "bg-white text-stone-600 hover:bg-stone-50"
+                            }`}
+                          >
+                            $
+                          </button>
+                        </div>
+                        <Input
+                          type="number"
+                          value={descuento}
+                          onChange={(e) => setDescuento(e.target.value)}
+                          min={0}
+                          placeholder={tipoDescuento === "%" ? "10" : "2"}
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Total */}
+                    <div className="flex justify-between text-base border-t pt-3">
+                      <span className="font-semibold text-stone-800">Total</span>
+                      <span className="font-bold text-violet-700">
+                        ${totalFinal.toFixed(2)}
+                      </span>
+                    </div>
+                  </>
+                )}
+
                 <Button
                   onClick={registrarVisita}
-                  className="bg-violet-600 hover:bg-violet-500 w-full"
+                  disabled={serviciosSeleccionados.length === 0}
+                  className="bg-violet-600 hover:bg-violet-500 w-full disabled:opacity-50"
                 >
-                  Confirmar visita
+                  {serviciosSeleccionados.length === 0
+                    ? "Selecciona al menos un servicio"
+                    : `Confirmar visita (${serviciosSeleccionados.length} servicio${serviciosSeleccionados.length > 1 ? "s" : ""})`}
                 </Button>
               </div>
             </DialogContent>
@@ -234,8 +325,10 @@ export default function ClienteProfile() {
                 Teléfono *
               </label>
               <Input
+                type="tel"
                 value={editTelefono}
-                onChange={(e) => setEditTelefono(e.target.value)}
+                onChange={(e) => setEditTelefono(e.target.value.replace(/[^0-9+]/g, ""))}
+                inputMode="numeric"
               />
             </div>
             <div>
@@ -357,37 +450,65 @@ export default function ClienteProfile() {
       </div>
 
       {/* Dialog Confirmar Eliminación de Visita */}
-      <Dialog
-        open={openEliminarVisita !== null}
-        onOpenChange={(open) => { if (!open) setOpenEliminarVisita(null); }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-red-600">🗑️ Eliminar visita</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-stone-700">
-            ¿Estás seguro de que deseas eliminar esta visita?
-          </p>
-          <p className="text-xs text-stone-500">
-            Esta acción no se puede deshacer.
-          </p>
-          <div className="flex gap-3 mt-2">
-            <Button
-              variant="outline"
-              onClick={() => setOpenEliminarVisita(null)}
-              className="flex-1"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={confirmarEliminarVisita}
-              className="flex-1 bg-red-600 hover:bg-red-500"
-            >
-              Eliminar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {(() => {
+        const visitaAEliminar = openEliminarVisita
+          ? cliente.visitas.find((v) => v.id === openEliminarVisita)
+          : null;
+        return (
+          <Dialog
+            open={openEliminarVisita !== null}
+            onOpenChange={(open) => { if (!open) setOpenEliminarVisita(null); }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="text-red-600">🗑️ Eliminar visita</DialogTitle>
+              </DialogHeader>
+              {visitaAEliminar && (
+                <div className="space-y-3 bg-stone-50 rounded-lg p-4 border">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-stone-500">Fecha</span>
+                    <span className="font-medium text-stone-800">
+                      {new Date(visitaAEliminar.fecha).toLocaleDateString("es", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-stone-500">Servicio</span>
+                    <Badge variant="secondary">{visitaAEliminar.servicio}</Badge>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-stone-500">Precio</span>
+                    <span className="font-medium text-stone-800">
+                      ${visitaAEliminar.precio.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-stone-500">
+                Esta acción no se puede deshacer.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setOpenEliminarVisita(null)}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={confirmarEliminarVisita}
+                  className="flex-1 bg-red-600 hover:bg-red-500"
+                >
+                  Eliminar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       {/* Toast de notificación */}
       <Toast message={toast} onClose={closeToast} />
