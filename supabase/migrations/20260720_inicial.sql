@@ -54,7 +54,24 @@ CREATE TRIGGER set_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at();
 
--- Row Level Security (deshabilitado por ahora — activar en producción con policies)
+-- Row Level Security: policies para anon (demo sin auth)
 ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE visitas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE servicios ENABLE ROW LEVEL SECURITY;
+
+-- Policies para clientes
+CREATE POLICY "anon_select_clientes" ON clientes FOR SELECT USING (true);
+CREATE POLICY "anon_insert_clientes" ON clientes FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon_update_clientes" ON clientes FOR UPDATE USING (true);
+
+-- Policies para visitas
+CREATE POLICY "anon_select_visitas" ON visitas FOR SELECT USING (true);
+CREATE POLICY "anon_insert_visitas" ON visitas FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon_update_visitas" ON visitas FOR UPDATE USING (true);
+CREATE POLICY "anon_delete_visitas" ON visitas FOR DELETE USING (true);
+
+-- Policies para servicios
+CREATE POLICY "anon_select_servicios" ON servicios FOR SELECT USING (true);
+CREATE POLICY "anon_insert_servicios" ON servicios FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon_update_servicios" ON servicios FOR UPDATE USING (true);
+CREATE POLICY "anon_delete_servicios" ON servicios FOR DELETE USING (true);
