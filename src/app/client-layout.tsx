@@ -2,46 +2,8 @@
 
 import Link from "next/link";
 import { useStore } from "@/lib/store";
-import { useState, ReactNode } from "react";
+import { ReactNode } from "react";
 import { Loader2 } from "lucide-react";
-
-function ResetButton() {
-  const { resetDatabase } = useStore();
-  const [show, setShow] = useState(false);
-
-  if (!show) {
-    return (
-      <button
-        onClick={() => setShow(true)}
-        className="text-stone-300 hover:text-stone-500 transition-colors"
-        title="Resetear datos demo"
-      >
-        ⚙️
-      </button>
-    );
-  }
-
-  return (
-    <span className="flex items-center gap-2">
-      <span className="text-stone-500">¿Restaurar datos demo?</span>
-      <button
-        onClick={() => {
-          resetDatabase();
-          setShow(false);
-        }}
-        className="text-red-500 hover:text-red-700 font-medium"
-      >
-        Sí, resetear
-      </button>
-      <button
-        onClick={() => setShow(false)}
-        className="text-stone-400 hover:text-stone-600"
-      >
-        Cancelar
-      </button>
-    </span>
-  );
-}
 
 export function ClientLayout({ children }: { children: ReactNode }) {
   const { loading } = useStore();
@@ -83,9 +45,8 @@ export function ClientLayout({ children }: { children: ReactNode }) {
       </nav>
       <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{children}</main>
       <footer className="border-t bg-white mt-12">
-        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between text-xs text-stone-400">
-          <span>BarberPro CRM &middot; Demo</span>
-          <ResetButton />
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-stone-400">
+          BarberPro CRM &middot; Demo
         </div>
       </footer>
     </>

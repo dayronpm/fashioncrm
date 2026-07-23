@@ -1,9 +1,10 @@
 -- ============================================================
--- SEED DATA para FashionCRM / BarberPro
--- Ejecutar en Supabase SQL Editor después de la migración
+-- INSERTAR DATOS DEMO
+-- Ejecutar en Supabase SQL Editor para poblar la base de datos
+-- con datos de ejemplo para la presentación al cliente.
 -- ============================================================
 
--- Limpiar datos existentes (en este orden por las FK)
+-- Limpiar datos existentes primero
 TRUNCATE TABLE visitas CASCADE;
 TRUNCATE TABLE clientes CASCADE;
 TRUNCATE TABLE servicios CASCADE;
@@ -15,7 +16,7 @@ INSERT INTO servicios (nombre, precio) VALUES
   ('Cejas', 3.00),
   ('Combo', 12.00);
 
--- ─── Clientes (con UUIDs deterministas) ─────────────────────
+-- ─── Clientes ───────────────────────────────────────────────
 INSERT INTO clientes (id, cedula, nombre, telefono, fecha_nacimiento, notas_pref) VALUES
   ('a0000000-0000-4000-8000-000000000001', 'PE-1234567', 'Carlos Mendoza',   '+50760001111', '1990-03-15', 'Le gusta el degradado alto'),
   ('a0000000-0000-4000-8000-000000000002', 'PE-2345678', 'Luis Rivera',      '+50760002222', '1985-07-22', 'Prefiere barba completa'),
@@ -33,7 +34,7 @@ INSERT INTO clientes (id, cedula, nombre, telefono, fecha_nacimiento, notas_pref
   ('a0000000-0000-4000-8000-00000000000e', 'PP-4567890', 'Kevin Morrison',  '+50760005050', NULL, 'Primera vez'),
   ('a0000000-0000-4000-8000-00000000000f', 'PP-5678901', 'Diego Villarreal', '+50760006060', '1999-10-10', NULL);
 
--- ─── Visitas (usar los mismos UUIDs de clientes como cliente_id) ──
+-- ─── Visitas ────────────────────────────────────────────────
 -- c1
 INSERT INTO visitas (cliente_id, fecha, servicio, precio) VALUES
   ('a0000000-0000-4000-8000-000000000001', NOW() - interval '90 days', 'Corte', 8),
@@ -136,10 +137,6 @@ INSERT INTO visitas (cliente_id, fecha, servicio, precio) VALUES
   ('a0000000-0000-4000-8000-00000000000d', NOW() - interval '60 days', 'Combo', 12),
   ('a0000000-0000-4000-8000-00000000000d', NOW() - interval '35 days', 'Corte', 8),
   ('a0000000-0000-4000-8000-00000000000d', NOW() - interval '15 days', 'Corte', 8);
--- c14 (1 visita)
+-- c14
 INSERT INTO visitas (cliente_id, fecha, servicio, precio) VALUES
   ('a0000000-0000-4000-8000-00000000000e', NOW() - interval '5 days', 'Corte', 8);
-
--- ============================================================
--- FIN DEL SEED
--- ============================================================
