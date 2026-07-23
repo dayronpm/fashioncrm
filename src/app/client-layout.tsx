@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { useState, ReactNode } from "react";
+import { Loader2 } from "lucide-react";
 
 function ResetButton() {
   const { resetDatabase } = useStore();
@@ -43,6 +44,19 @@ function ResetButton() {
 }
 
 export function ClientLayout({ children }: { children: ReactNode }) {
+  const { loading } = useStore();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-50">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin text-violet-600 mx-auto" />
+          <p className="text-sm text-stone-500">Cargando datos...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <nav className="border-b bg-white shadow-sm">

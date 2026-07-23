@@ -28,12 +28,14 @@ CREATE TABLE IF NOT EXISTS visitas (
   fecha DATE NOT NULL DEFAULT CURRENT_DATE,
   servicio TEXT NOT NULL,
   precio NUMERIC(10,2) NOT NULL,
+  grupo_id TEXT, -- para agrupar visitas múltiples en una misma sesión
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_visitas_cliente_id ON visitas(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_visitas_fecha ON visitas(fecha);
+CREATE INDEX IF NOT EXISTS idx_visitas_grupo_id ON visitas(grupo_id);
 CREATE INDEX IF NOT EXISTS idx_clientes_cedula ON clientes(cedula);
 CREATE INDEX IF NOT EXISTS idx_clientes_telefono ON clientes(telefono);
 CREATE INDEX IF NOT EXISTS idx_clientes_nombre ON clientes(nombre);
@@ -52,6 +54,7 @@ CREATE TRIGGER set_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at();
 
--- Row Level Security (opcional, deshabilitado por ahora)
+-- Row Level Security (deshabilitado por ahora — activar en producción con policies)
 ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE visitas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE servicios ENABLE ROW LEVEL SECURITY;
